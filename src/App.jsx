@@ -164,31 +164,30 @@ export default function App() {
         // Use getByteFrequencyData instead of TimeDomain for highly stable frequency analysis
         analyser.getByteFrequencyData(dataArray);
 
-        // 1. Calculate general average frequency volume (0 to 255)
+        // 1. Calculate general average frequency volume (0 to 255) for loud sound backups
         let total = 0;
         for (let i = 0; i < dataArray.length; i++) {
           total += dataArray[i];
         }
         const generalAvg = total / dataArray.length;
+        const generalVol = generalAvg / 255.0;
 
-        // 2. Calculate low frequency average (bins 0 to 12 cover frequencies up to ~1000Hz, where wind/blowing noise peaks)
-        let lowSum = 0;
-        const lowBins = Math.min(12, dataArray.length);
-        for (let i = 0; i < lowBins; i++) {
-          lowSum += dataArray[i];
+        // 2. Calculate pure wind-rumble blowing average (bins 0 to 3 cover 0-350Hz where wind turbulence peaks)
+        let blowSum = 0;
+        const blowBins = Math.min(4, dataArray.length);
+        for (let i = 0; i < blowBins; i++) {
+          blowSum += dataArray[i];
         }
-        const lowAvg = lowSum / lowBins;
+        const blowAvg = blowSum / blowBins;
+        const blowVol = blowAvg / 255.0;
 
-        // Take the maximum of both to be extremely sensitive to either general loud sound or breath blowing
-        const maxVal = Math.max(generalAvg, lowAvg);
-        const normalizedVol = maxVal / 255.0; // scale to 0.0 - 1.0
-        
-        setMicVolume(normalizedVol);
+        // Display the maximum of both to the user in the volume bar
+        setMicVolume(Math.max(generalVol, blowVol));
 
-        // A threshold of 0.12 is extremely responsive for blowing, but stays safely above ambient silence
-        if (normalizedVol > 0.12) {
+        // Trigger if either we detect blowing (blowVol > 0.08) OR a general loud noise (generalVol > 0.15)
+        if (blowVol > 0.08 || generalVol > 0.15) {
           consecutiveBlowsRef.current += 1;
-          if (consecutiveBlowsRef.current >= 5) { // Only requires 5 frames (approx 80ms) of sustained volume to trigger!
+          if (consecutiveBlowsRef.current >= 4) { // Trigger in 4 frames (~60ms) of sustained input
             triggerExtinguishCandles();
             return;
           }
