@@ -115,8 +115,8 @@ export class ThreeSceneManager {
     this.controls.enableZoom = true;
     this.controls.autoRotate = true;
     this.controls.autoRotateSpeed = 0.15;
-    this.controls.minDistance = 12;
-    this.controls.maxDistance = 55;
+    this.controls.minDistance = 8;
+    this.controls.maxDistance = 140;
     this.controls.enabled = false; // Disabled until Saturn phase
 
     // Add Groups to Scene
@@ -1439,10 +1439,14 @@ export class ThreeSceneManager {
       }
     });
 
+    const aspect = this.container.clientWidth / this.container.clientHeight;
+    const targetZ = aspect < 1.0 ? 32 / aspect : 32;
+    const targetY = aspect < 1.0 ? 12 / aspect : 12;
+
     timeline.to(this.camera.position, {
       x: 0,
-      y: 12,
-      z: 32,
+      y: targetY,
+      z: targetZ,
       duration: 4.5,
       ease: 'power3.inOut'
     }, 0);
@@ -1585,10 +1589,14 @@ export class ThreeSceneManager {
   resetPhotoZoom() {
     if (!this.isPhotoZoomed) return;
 
+    const aspect = this.container.clientWidth / this.container.clientHeight;
+    const targetZ = aspect < 1.0 ? 32 / aspect : 32;
+    const targetY = aspect < 1.0 ? 12 / aspect : 12;
+
     gsap.to(this.camera.position, {
       x: 0,
-      y: 12,
-      z: 32,
+      y: targetY,
+      z: targetZ,
       duration: 1.5,
       ease: 'power3.out',
       onComplete: () => {
