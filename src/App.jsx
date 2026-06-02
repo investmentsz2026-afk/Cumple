@@ -22,6 +22,7 @@ export default function App() {
   const canvasRef = useRef(null);
   const audioContextRef = useRef(null);
   const streamRef = useRef(null);
+  const preloadedStreamRef = useRef(null);
   const phaseRef = useRef(phase);
   const consecutiveBlowsRef = useRef(0);
   const lluviaCorazonesActivaRef = useRef(false);
@@ -31,6 +32,27 @@ export default function App() {
   useEffect(() => {
     phaseRef.current = phase;
   }, [phase]);
+
+  // Request microphone permission immediately on page load
+  useEffect(() => {
+    const preloadMic = async () => {
+      try {
+        const constraints = {
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          }
+        };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        preloadedStreamRef.current = stream;
+        console.log("Microphone stream preloaded and permission granted.");
+      } catch (err) {
+        console.warn("Microphone preloading failed or denied:", err);
+      }
+    };
+    preloadMic();
+  }, []);
 
   // Clean up audio on unmount
   useEffect(() => {
@@ -43,6 +65,10 @@ export default function App() {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
+    }
+    if (preloadedStreamRef.current) {
+      preloadedStreamRef.current.getTracks().forEach(track => track.stop());
+      preloadedStreamRef.current = null;
     }
     if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
       audioContextRef.current.close();
@@ -85,16 +111,22 @@ export default function App() {
 
   const handleActivateMicrophone = async () => {
     try {
-      // Explicitly disable noise suppression, echo cancellation, and auto gain control.
-      // This is CRITICAL because browser filters identify blowing (wind noise) as background noise and silence it.
-      const constraints = {
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false
-        }
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      // Re-use or obtain the stream from our preloaded stream.
+      // If the preloaded stream was denied or stopped, request a new one.
+      let stream = preloadedStreamRef.current;
+      const isStreamActive = stream && stream.getTracks().some(track => track.readyState === 'live');
+
+      if (!isStreamActive) {
+        const constraints = {
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          }
+        };
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        preloadedStreamRef.current = stream;
+      }
       streamRef.current = stream;
 
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -115,7 +147,7 @@ export default function App() {
       setPhase('mic_active');
       consecutiveBlowsRef.current = 0;
 
-      // Start Speech Recognition as a secondary trigger for voice commands ("soplar", "sopla")
+      // Start Speech Recognition as a secondary trigger for voice commands
       const SpeechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognitionClass) {
         const recognition = new SpeechRecognitionClass();
@@ -136,7 +168,13 @@ export default function App() {
               transcript.includes('apagar') || 
               transcript.includes('velas') || 
               transcript.includes('vela') ||
-              transcript.includes('soplido')
+              transcript.includes('soplido') ||
+              transcript.includes('soplo') ||
+              transcript.includes('fuuu') ||
+              transcript.includes('fú') ||
+              transcript.includes('shh') ||
+              transcript.includes('shsh') ||
+              transcript.includes('ssss')
             ) {
               triggerExtinguishCandles();
               break;
@@ -164,28 +202,65 @@ export default function App() {
         // Use getByteFrequencyData instead of TimeDomain for highly stable frequency analysis
         analyser.getByteFrequencyData(dataArray);
 
-        // 1. Calculate general average frequency volume (0 to 255) for loud sound backups
+        // 1. Calculate low-frequency rumble blowing average (bins 0 to 4 cover 0-430Hz)
+        let blowSum = 0;
+        const blowBinsLimit = Math.min(5, dataArray.length);
+        for (let i = 0; i < blowBinsLimit; i++) {
+          blowSum += dataArray[i];
+        }
+        const blowVol = (blowSum / blowBinsLimit) / 255.0;
+
+        // 2. Calculate breath sound ("fuuuuu" mid-low hiss, bins 4 to 30)
+        let breathSum = 0;
+        const breathBinsStart = 4;
+        const breathBinsEnd = Math.min(30, dataArray.length);
+        for (let i = breathBinsStart; i < breathBinsEnd; i++) {
+          breathSum += dataArray[i];
+        }
+        const breathVol = (breathSum / (breathBinsEnd - breathBinsStart)) / 255.0;
+
+        // 3. Calculate hissing sound ("shshshshshhs" high frequency hiss, bins 15 to 90)
+        let hissSum = 0;
+        const hissBinsStart = 15;
+        const hissBinsEnd = Math.min(90, dataArray.length);
+        for (let i = hissBinsStart; i < hissBinsEnd; i++) {
+          hissSum += dataArray[i];
+        }
+        const hissVol = (hissSum / (hissBinsEnd - hissBinsStart)) / 255.0;
+
+        // 4. Calculate peak amplitude (maximum volume of any single frequency bin)
+        let maxBinVal = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          if (dataArray[i] > maxBinVal) {
+            maxBinVal = dataArray[i];
+          }
+        }
+        const peakVol = maxBinVal / 255.0;
+
+        // 5. Calculate general average volume (average of all bins)
         let total = 0;
         for (let i = 0; i < dataArray.length; i++) {
           total += dataArray[i];
         }
-        const generalAvg = total / dataArray.length;
-        const generalVol = generalAvg / 255.0;
+        const generalVol = (total / dataArray.length) / 255.0;
 
-        // 2. Calculate pure wind-rumble blowing average (bins 0 to 3 cover 0-350Hz where wind turbulence peaks)
-        let blowSum = 0;
-        const blowBins = Math.min(4, dataArray.length);
-        for (let i = 0; i < blowBins; i++) {
-          blowSum += dataArray[i];
-        }
-        const blowAvg = blowSum / blowBins;
-        const blowVol = blowAvg / 255.0;
+        // Show the maximum volume from any of the relevant components on the visual bar
+        const currentFeedbackVol = Math.max(blowVol, breathVol, hissVol, generalVol);
+        setMicVolume(currentFeedbackVol);
 
-        // Display the maximum of both to the user in the volume bar
-        setMicVolume(Math.max(generalVol, blowVol));
-
-        // Trigger if either we detect blowing (blowVol > 0.08) OR a general loud noise (generalVol > 0.15)
-        if (blowVol > 0.08 || generalVol > 0.15) {
+        // Trigger if ANY of the filters cross their optimized thresholds:
+        // - blowVol > 0.07 (direct wind rumble)
+        // - breathVol > 0.07 (vocal breath "fuuuuu")
+        // - hissVol > 0.06 (hissing sound "shshshshshhs")
+        // - peakVol > 0.25 (any strong single frequency peak)
+        // - generalVol > 0.12 (general room/voice volume)
+        if (
+          blowVol > 0.07 ||
+          breathVol > 0.07 ||
+          hissVol > 0.06 ||
+          peakVol > 0.25 ||
+          generalVol > 0.12
+        ) {
           consecutiveBlowsRef.current += 1;
           if (consecutiveBlowsRef.current >= 4) { // Trigger in 4 frames (~60ms) of sustained input
             triggerExtinguishCandles();
