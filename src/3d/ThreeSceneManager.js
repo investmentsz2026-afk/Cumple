@@ -32,6 +32,11 @@ export class ThreeSceneManager {
     this.smokeParticles = [];
     this.saturnMesh = null;
     this.photoMeshes = [];
+    this.twinklingStarGroups = [];
+    this.constellationLines = null;
+    this.constellationStars = null;
+    this.nebulaMeshes = [];
+    this.distantPlanets = [];
 
     // Saturn specific details from 'saturno' folder (Restoring the circular text ring)
     this.textRingGroup = null;
@@ -168,63 +173,358 @@ export class ThreeSceneManager {
   // BUILD METHODS
   // ==========================================
 
-  buildStars() {
-    const starCount = 3000;
-    const geometry = new THREE.BufferGeometry();
-    const positions = new Float32Array(starCount * 3);
-    const colors = new Float32Array(starCount * 3);
+  createCircleGlowTexture(size = 32, innerOpacity = 1.0, outerOpacity = 0.0) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const half = size / 2;
+    const grad = ctx.createRadialGradient(half, half, 0, half, half, half);
+    grad.addColorStop(0, `rgba(255, 255, 255, ${innerOpacity})`);
+    grad.addColorStop(0.3, `rgba(255, 255, 255, ${innerOpacity * 0.7})`);
+    grad.addColorStop(1, `rgba(255, 255, 255, ${outerOpacity})`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+    return new THREE.CanvasTexture(canvas);
+  }
 
-    for (let i = 0; i < starCount; i++) {
-      const radius = 90 + Math.random() * 110;
+  createCrossFlareTexture(size = 32) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const half = size / 2;
+    
+    // Draw vertical/horizontal glow line
+    const gradX = ctx.createLinearGradient(0, half, size, half);
+    gradX.addColorStop(0, 'rgba(255,255,255,0)');
+    gradX.addColorStop(0.5, 'rgba(255,255,255,1)');
+    gradX.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gradX;
+    ctx.fillRect(0, half - 1.5, size, 3);
+
+    const gradY = ctx.createLinearGradient(half, 0, half, size);
+    gradY.addColorStop(0, 'rgba(255,255,255,0)');
+    gradY.addColorStop(0.5, 'rgba(255,255,255,1)');
+    gradY.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gradY;
+    ctx.fillRect(half - 1.5, 0, 3, size);
+
+    // Draw central glow circle
+    const grad = ctx.createRadialGradient(half, half, 0, half, half, half / 3);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(half, half, half / 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    return new THREE.CanvasTexture(canvas);
+  }
+
+  createNebulaTexture(colorHex1, colorHex2) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    
+    const half = 256;
+    const grad = ctx.createRadialGradient(half, half, 0, half, half, half);
+    grad.addColorStop(0, colorHex1);
+    grad.addColorStop(0.4, colorHex2);
+    grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 512, 512);
+
+    for (let i = 0; i < 3; i++) {
+      const cx = 150 + Math.random() * 212;
+      const cy = 150 + Math.random() * 212;
+      const r = 100 + Math.random() * 150;
+      const subGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      subGrad.addColorStop(0, colorHex1);
+      subGrad.addColorStop(1.0, 'rgba(0,0,0,0)');
+      ctx.fillStyle = subGrad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    return new THREE.CanvasTexture(canvas);
+  }
+
+  buildStars() {
+    // Clear the starsGroup just in case
+    while(this.starsGroup.children.length > 0){
+      const obj = this.starsGroup.children[0];
+      this.starsGroup.remove(obj);
+    }
+
+    // 1. CAPA 1: Estrellas Fijas del Fondo (Fijas e infinitas)
+    const fixedStarCount = 2500;
+    const fixedGeom = new THREE.BufferGeometry();
+    const fixedPositions = new Float32Array(fixedStarCount * 3);
+    const fixedColors = new Float32Array(fixedStarCount * 3);
+
+    for (let i = 0; i < fixedStarCount; i++) {
+      const radius = 130 + Math.random() * 70;
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(Math.random() * 2 - 1);
 
-      positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
-      positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
-      positions[i * 3 + 2] = radius * Math.cos(phi);
+      fixedPositions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+      fixedPositions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+      fixedPositions[i * 3 + 2] = radius * Math.cos(phi);
 
+      // Light blue, soft purple, white
       const r = Math.random();
-      if (r > 0.95) {
-        colors[i * 3] = 0.6;
-        colors[i * 3 + 1] = 0.8;
-        colors[i * 3 + 2] = 1.0;
-      } else if (r > 0.9) {
-        colors[i * 3] = 1.0;
-        colors[i * 3 + 1] = 0.9;
-        colors[i * 3 + 2] = 0.7;
+      if (r > 0.8) {
+        fixedColors[i * 3] = 0.75;
+        fixedColors[i * 3 + 1] = 0.85;
+        fixedColors[i * 3 + 2] = 1.0;
+      } else if (r > 0.6) {
+        fixedColors[i * 3] = 0.9;
+        fixedColors[i * 3 + 1] = 0.8;
+        fixedColors[i * 3 + 2] = 0.95;
       } else {
-        colors[i * 3] = 1.0;
-        colors[i * 3 + 1] = 1.0;
-        colors[i * 3 + 2] = 1.0;
+        fixedColors[i * 3] = 1.0;
+        fixedColors[i * 3 + 1] = 1.0;
+        fixedColors[i * 3 + 2] = 1.0;
       }
     }
 
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    fixedGeom.setAttribute('position', new THREE.BufferAttribute(fixedPositions, 3));
+    fixedGeom.setAttribute('color', new THREE.BufferAttribute(fixedColors, 3));
 
-    const canvas = document.createElement('canvas');
-    canvas.width = 16;
-    canvas.height = 16;
-    const ctx = canvas.getContext('2d');
-    const grad = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
-    grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
-    grad.addColorStop(0.3, 'rgba(255, 255, 255, 0.8)');
-    grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 16, 16);
-    const starTexture = new THREE.CanvasTexture(canvas);
-
-    const material = new THREE.PointsMaterial({
-      size: 1.2,
-      map: starTexture,
+    const fixedTexture = this.createCircleGlowTexture(16, 0.9, 0);
+    const fixedMaterial = new THREE.PointsMaterial({
+      size: 0.8,
+      map: fixedTexture,
       vertexColors: true,
       transparent: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false
     });
 
-    this.stars = new THREE.Points(geometry, material);
+    this.stars = new THREE.Points(fixedGeom, fixedMaterial);
     this.starsGroup.add(this.stars);
+
+    // 2. CAPA 2: Estrellas Titilantes Multicolores (Pulsantes e independientes)
+    this.twinklingStarGroups = [];
+    const twinklingConfig = [
+      { color: 0xffbb44, size: 2.0, frequency: 1.8, phase: 0, count: 200 },    // Oro
+      { color: 0xff44aa, size: 2.4, frequency: 2.6, phase: Math.PI / 2, count: 200 }, // Rosa
+      { color: 0x33ddff, size: 1.8, frequency: 3.2, phase: Math.PI, count: 200 },    // Cian
+      { color: 0xa844ff, size: 2.2, frequency: 1.4, phase: Math.PI * 1.5, count: 200 } // Violeta
+    ];
+
+    twinklingConfig.forEach((cfg) => {
+      const geom = new THREE.BufferGeometry();
+      const pos = new Float32Array(cfg.count * 3);
+      for (let i = 0; i < cfg.count; i++) {
+        const radius = 95 + Math.random() * 45;
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(Math.random() * 2 - 1);
+        pos[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+        pos[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+        pos[i * 3 + 2] = radius * Math.cos(phi);
+      }
+      geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      
+      const starTex = this.createCircleGlowTexture(32, 1.0, 0);
+      const mat = new THREE.PointsMaterial({
+        color: cfg.color,
+        size: cfg.size,
+        map: starTex,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+
+      const points = new THREE.Points(geom, mat);
+      this.starsGroup.add(points);
+      this.twinklingStarGroups.push({
+        mesh: points,
+        baseSize: cfg.size,
+        frequency: cfg.frequency,
+        phase: cfg.phase
+      });
+    });
+
+    // 3. CAPA 3: Estrellas Nodos de Constelación (Grandes, con destellos cruzados)
+    const constellationStarCount = 80;
+    const constelGeom = new THREE.BufferGeometry();
+    const constelPositions = new Float32Array(constellationStarCount * 3);
+    const starCoords = [];
+
+    for (let i = 0; i < constellationStarCount; i++) {
+      const radius = 100 + Math.random() * 30;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(Math.random() * 2 - 1);
+
+      const x = radius * Math.sin(phi) * Math.cos(theta);
+      const y = radius * Math.sin(phi) * Math.sin(theta);
+      const z = radius * Math.cos(phi);
+
+      constelPositions[i * 3] = x;
+      constelPositions[i * 3 + 1] = y;
+      constelPositions[i * 3 + 2] = z;
+
+      starCoords.push(new THREE.Vector3(x, y, z));
+    }
+    constelGeom.setAttribute('position', new THREE.BufferAttribute(constelPositions, 3));
+
+    const flareTex = this.createCrossFlareTexture(32);
+    const constelMaterial = new THREE.PointsMaterial({
+      color: 0xffffff,
+      size: 3.2,
+      map: flareTex,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+
+    this.constellationStars = new THREE.Points(constelGeom, constelMaterial);
+    this.starsGroup.add(this.constellationStars);
+
+    // 4. LÍNEAS DE CONSTELACIÓN (Conexión sutil y pulsante entre nodos)
+    const lineIndices = [];
+    const maxDist = 26;
+    const minDist = 12;
+
+    for (let i = 0; i < constellationStarCount; i++) {
+      let connections = 0;
+      for (let j = i + 1; j < constellationStarCount; j++) {
+        if (connections >= 2) break;
+        const d = starCoords[i].distanceTo(starCoords[j]);
+        if (d >= minDist && d <= maxDist) {
+          lineIndices.push(starCoords[i].x, starCoords[i].y, starCoords[i].z);
+          lineIndices.push(starCoords[j].x, starCoords[j].y, starCoords[j].z);
+          connections++;
+        }
+      }
+    }
+
+    const lineGeom = new THREE.BufferGeometry();
+    lineGeom.setAttribute('position', new THREE.Float32BufferAttribute(lineIndices, 3));
+
+    const lineMaterial = new THREE.LineBasicMaterial({
+      color: 0x88ccff,
+      transparent: true,
+      opacity: 0.12,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+
+    this.constellationLines = new THREE.LineSegments(lineGeom, lineMaterial);
+    this.starsGroup.add(this.constellationLines);
+
+    // 5. NEBULOSAS TRIDIMENSIONALES (Paralaje profundo en 3D)
+    this.nebulaMeshes = [];
+    const nebulaGeom = new THREE.PlaneGeometry(300, 300);
+    const nebulaConfigs = [
+      { color1: 'rgba(255, 30, 180, 0.16)', color2: 'rgba(180, 30, 255, 0.03)', z: -160, x: -30, y: 20 },
+      { color1: 'rgba(30, 80, 255, 0.14)', color2: 'rgba(30, 200, 255, 0.02)', z: -180, x: 50, y: -40 },
+      { color1: 'rgba(255, 20, 147, 0.12)', color2: 'rgba(255, 165, 0, 0.02)', z: -150, x: -70, y: -50 },
+      { color1: 'rgba(138, 43, 226, 0.15)', color2: 'rgba(65, 105, 225, 0.03)', z: -170, x: 40, y: 60 }
+    ];
+
+    nebulaConfigs.forEach((cfg) => {
+      const tex = this.createNebulaTexture(cfg.color1, cfg.color2);
+      const mat = new THREE.MeshBasicMaterial({
+        map: tex,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide
+      });
+      const mesh = new THREE.Mesh(nebulaGeom, mat);
+      mesh.position.set(cfg.x, cfg.y, cfg.z);
+      mesh.rotation.z = Math.random() * Math.PI * 2;
+      this.starsGroup.add(mesh);
+      this.nebulaMeshes.push(mesh);
+    });
+
+    // 6. EXOPLANETAS LEJANOS
+    this.distantPlanets = [];
+    
+    // Planet A: Ice Planet (Cian con anillo helado)
+    const planetAGroup = new THREE.Group();
+    const sphereGeomA = new THREE.SphereGeometry(0.6, 32, 32);
+    const matA = new THREE.MeshPhongMaterial({
+      color: 0x88ddff,
+      shininess: 90,
+      specular: 0xffffff,
+      emissive: 0x112233
+    });
+    const sphereA = new THREE.Mesh(sphereGeomA, matA);
+    planetAGroup.add(sphereA);
+
+    const ringGeomA = new THREE.RingGeometry(0.8, 1.1, 32);
+    const ringMatA = new THREE.MeshBasicMaterial({
+      color: 0xbbecff,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.4,
+      blending: THREE.AdditiveBlending
+    });
+    const ringA = new THREE.Mesh(ringGeomA, ringMatA);
+    ringA.rotation.x = Math.PI / 2.3;
+    planetAGroup.add(ringA);
+    planetAGroup.position.set(70, 30, -90);
+    this.starsGroup.add(planetAGroup);
+    this.distantPlanets.push({ group: planetAGroup, rotSpeed: 0.4, orbitSpeed: 0.01 });
+
+    // Planet B: Warm Gaseous Planet (Anaranjado cálido con doble anillo)
+    const planetBGroup = new THREE.Group();
+    const sphereGeomB = new THREE.SphereGeometry(0.8, 32, 32);
+    const matB = new THREE.MeshPhongMaterial({
+      color: 0xffaa66,
+      shininess: 50,
+      specular: 0xffffff,
+      emissive: 0x221100
+    });
+    const sphereB = new THREE.Mesh(sphereGeomB, matB);
+    planetBGroup.add(sphereB);
+
+    const ringGeomB = new THREE.RingGeometry(1.0, 1.4, 32);
+    const ringMatB = new THREE.MeshBasicMaterial({
+      color: 0xffddaa,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.35,
+      blending: THREE.AdditiveBlending
+    });
+    const ringB = new THREE.Mesh(ringGeomB, ringMatB);
+    ringB.rotation.x = Math.PI / 2.5;
+    planetBGroup.add(ringB);
+    planetBGroup.position.set(-85, -20, -75);
+    this.starsGroup.add(planetBGroup);
+    this.distantPlanets.push({ group: planetBGroup, rotSpeed: 0.25, orbitSpeed: 0.008 });
+
+    // Planet C: Violet Glow Planet (Lila brillante con mini atmósfera)
+    const planetCGroup = new THREE.Group();
+    const sphereGeomC = new THREE.SphereGeometry(0.7, 32, 32);
+    const matC = new THREE.MeshPhongMaterial({
+      color: 0xb566ff,
+      shininess: 110,
+      specular: 0xffaaff,
+      emissive: 0x330055
+    });
+    const sphereC = new THREE.Mesh(sphereGeomC, matC);
+    planetCGroup.add(sphereC);
+
+    const atmosGeomC = new THREE.SphereGeometry(0.85, 16, 16);
+    const atmosMatC = new THREE.MeshBasicMaterial({
+      color: 0xd899ff,
+      transparent: true,
+      opacity: 0.3,
+      blending: THREE.AdditiveBlending,
+      side: THREE.BackSide
+    });
+    const atmosC = new THREE.Mesh(atmosGeomC, atmosMatC);
+    planetCGroup.add(atmosC);
+    planetCGroup.position.set(50, -45, -100);
+    this.starsGroup.add(planetCGroup);
+    this.distantPlanets.push({ group: planetCGroup, rotSpeed: 0.6, orbitSpeed: 0.012 });
   }
 
   buildWarpLines() {
@@ -1295,15 +1595,48 @@ export class ThreeSceneManager {
       }
     }
 
-    // 2. Stars animation (Twinkling + Warp Speed)
-    if (this.stars) {
+    // 2. Stars, Constellations, Nebulas, and Exoplanets animation
+    if (this.starsGroup) {
       this.starsGroup.rotation.y = elapsedTime * 0.005;
-      
-      // Make stars twinkle dynamically (pulsate size gently)
-      if (this.stars.material) {
-        this.stars.material.size = 1.0 + Math.sin(elapsedTime * 3.0) * 0.25;
+
+      // Twinkling stars animation
+      if (this.twinklingStarGroups) {
+        this.twinklingStarGroups.forEach((g) => {
+          if (g.mesh && g.mesh.material) {
+            // Pulse size between 65% and 135% of baseSize
+            g.mesh.material.size = g.baseSize * (0.65 + Math.sin(elapsedTime * g.frequency + g.phase) * 0.35);
+          }
+        });
       }
 
+      // Constellation nodes pulsing
+      if (this.constellationStars && this.constellationStars.material) {
+        this.constellationStars.material.size = 3.2 * (0.75 + Math.cos(elapsedTime * 2.2) * 0.25);
+      }
+
+      // Constellation lines breathing
+      if (this.constellationLines && this.constellationLines.material) {
+        this.constellationLines.material.opacity = 0.07 + Math.sin(elapsedTime * 1.5) * 0.05;
+      }
+
+      // Slowly rotate 3D nebula planes on their Z axis for deep swirling effect
+      if (this.nebulaMeshes) {
+        this.nebulaMeshes.forEach((mesh, idx) => {
+          mesh.rotation.z += (idx % 2 === 0 ? 0.012 : -0.009) * deltaTime;
+        });
+      }
+
+      // Update distant exoplanets
+      if (this.distantPlanets) {
+        this.distantPlanets.forEach((p) => {
+          // Orbit rotation in background
+          p.group.rotation.y += p.rotSpeed * deltaTime;
+          // Very gentle vertical wave-like bobbing
+          p.group.position.y += Math.sin(elapsedTime * p.rotSpeed * 2.0) * 0.05 * deltaTime * 60;
+        });
+      }
+
+      // Warp speed lines during cinematic transition
       if (this.warpSpeed > 0 && this.phase === 'transition') {
         const linePositions = this.warpLines.geometry.attributes.position.array;
         const lineCount = linePositions.length / 3;
@@ -1462,15 +1795,22 @@ export class ThreeSceneManager {
     this.falling3DHearts.forEach(h => this.scene.remove(h.mesh));
     this.falling3DHearts = [];
 
-    // Dispose geometries and materials
+    // Dispose geometries, materials, and textures
     this.scene.traverse((object) => {
-      if (!object.isMesh && !object.isPoints) return;
-      object.geometry.dispose();
+      if (object.geometry) {
+        object.geometry.dispose();
+      }
 
-      if (Array.isArray(object.material)) {
-        object.material.forEach((mat) => mat.dispose());
-      } else {
-        object.material.dispose();
+      if (object.material) {
+        if (Array.isArray(object.material)) {
+          object.material.forEach((mat) => {
+            if (mat.map) mat.map.dispose();
+            mat.dispose();
+          });
+        } else {
+          if (object.material.map) object.material.map.dispose();
+          object.material.dispose();
+        }
       }
     });
   }
