@@ -59,6 +59,11 @@ export default function App() {
     }
   };
 
+  // Request microphone permission immediately on page load
+  useEffect(() => {
+    preloadMicrophoneStream();
+  }, []);
+
   // Initialize background music
   useEffect(() => {
     const music = new Audio('/musica.mp3');
@@ -158,10 +163,6 @@ export default function App() {
   const handleStartExperience = () => {
     if (phase !== 'welcome') return;
     playMusic();
-    // Delay microphone preloading slightly to prevent resource contention / Safari crash on page load
-    setTimeout(() => {
-      preloadMicrophoneStream();
-    }, 800);
     setPhase('lyrics');
     setLyricsIndex(0);
   };
@@ -440,6 +441,8 @@ export default function App() {
     setContadorToques(0);
     setIndicadorMensaje("Toca la pantalla mi amor ❤️");
     setPhase('welcome');
+    // Preload the microphone stream again so it's ready for the next candle blow
+    preloadMicrophoneStream();
   };
 
   // ==========================================
