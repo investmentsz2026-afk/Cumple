@@ -694,7 +694,7 @@ export class ThreeSceneManager {
     // 16 user-provided images from the public directory (img1.jpeg - img16.jpeg)
     const baseImages = Array.from({ length: 16 }, (_, i) => `/img${i + 1}.jpeg`);
     
-    // Triple the list of 16 images to make 48 cards (32 close-in, 16 further out like stars)
+    // Triple the list of 16 images to make 48 cards
     const textures = [...baseImages, ...baseImages, ...baseImages];
     
     // Randomize/shuffle the textures using Fisher-Yates algorithm
@@ -707,25 +707,27 @@ export class ThreeSceneManager {
     const titles = ['Momentos', 'Sonrisas', 'Abrazos', 'Felices', 'Juntos', 'Tú y Yo', 'Recuerdos', 'Amor', 'Mi Reina', 'Mi Vida', 'Mi Tesoro', 'Hermosa', 'Te Amo', 'Por Siempre', 'Risas', 'Dulzura'];
 
     this.photoOrbits = [];
-    for (let i = 0; i < photoCount; i++) {
-      let radius;
-      let inclination;
-      
-      if (i < 32) {
-        // First 32 photos: Close to Saturn (dense inner ring)
-        radius = 5.6 + (i * 0.24) + Math.random() * 0.15;
-        inclination = (Math.random() - 0.5) * 0.32;
-      } else {
-        // Remaining 16 photos: Farther away, like stars in the background
-        radius = 16.0 + ((i - 32) * 0.8) + Math.random() * 0.5;
-        inclination = (Math.random() - 0.5) * 0.5; // More vertical spread for the outer "star" photos
-      }
+    
+    // Distribute 48 photos into 3 clean concentric flat orbits (16 photos per orbit)
+    const photosPerOrbit = 16;
+    const orbits = [
+      { radius: 10.8, speed: 0.08, offset: 0 },
+      { radius: 13.6, speed: 0.065, offset: Math.PI / 16 },
+      { radius: 16.4, speed: 0.05, offset: Math.PI / 8 }
+    ];
 
-      const speed = 0.08 + (0.22 / radius) + Math.random() * 0.04;
-      const angle = Math.random() * Math.PI * 2;
-      const textureUrl = textures[i];
+    for (let i = 0; i < photoCount; i++) {
+      const orbitIndex = Math.floor(i / photosPerOrbit);
+      const orbitConfig = orbits[orbitIndex];
+      const photoIndexInOrbit = i % photosPerOrbit;
       
-      // Match title dynamically based on the image number (e.g. "/img7.jpeg" -> "Amor #7")
+      // Calculate evenly spaced starting angle to prevent overlapping
+      const angle = (photoIndexInOrbit / photosPerOrbit) * Math.PI * 2 + orbitConfig.offset;
+      const radius = orbitConfig.radius;
+      const speed = orbitConfig.speed;
+      const inclination = 0.0; // Completely flat, parallel to Saturn's rings
+
+      const textureUrl = textures[i];
       const imgMatch = textureUrl.match(/img(\d+)\./);
       const imgNum = imgMatch ? parseInt(imgMatch[1], 10) : (i % 16 + 1);
       const title = `${titles[(imgNum - 1) % titles.length]} #${imgNum}`;
