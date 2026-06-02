@@ -58,11 +58,11 @@ export class ThreeSceneManager {
     // Auto-generated 16 polaroid orbits populated dynamically
     this.photoOrbits = [];
 
-    // Async Font Loading for circular text ring
+    // Async Font Loading for circular text ring (loaded from local folder)
     this.font = null;
     this.fontLoader = new FontLoader();
     this.fontLoader.load(
-      'https://threejs.org/examples/fonts/gentilis_regular.typeface.json',
+      '/gentilis_regular.typeface.json',
       (loadedFont) => {
         this.font = loadedFont;
         if (this.saturnMesh) {
@@ -101,7 +101,10 @@ export class ThreeSceneManager {
     this.renderer.setSize(width, height);
     this.renderer.setClearColor(0x000000, 0); // transparent background!
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = true;
+
+    // Disable shadows on mobile to improve page load speed and rendering performance significantly
+    const isMobile = window.innerWidth < 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    this.renderer.shadowMap.enabled = !isMobile;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
@@ -132,8 +135,10 @@ export class ThreeSceneManager {
 
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.6);
     dirLight.position.set(10, 20, 15);
-    dirLight.castShadow = true;
-    dirLight.shadow.bias = -0.001;
+    if (!isMobile) {
+      dirLight.castShadow = true;
+      dirLight.shadow.bias = -0.001;
+    }
     this.scene.add(dirLight);
 
     // Saturn pink light accents - make it much brighter for vibrant glow
@@ -150,12 +155,23 @@ export class ThreeSceneManager {
     backLight.position.set(-8, -8, -8);
     this.spaceGroup.add(backLight);
 
-    // Build Parts
-    this.buildStars();
-    this.buildWarpLines();
+    // Build Cake immediately so the welcome screen is interactive instantly
     this.buildCake();
-    this.buildSaturn();
-    this.buildPhotos();
+
+    // Defer building heavy space assets to a background timeout to keep initial page load instant
+    setTimeout(() => {
+      if (!this.renderer) return; // Check if the component was destroyed
+      this.buildStars();
+      this.buildWarpLines();
+      this.buildSaturn();
+      this.buildPhotos();
+
+      // If we already transitioned to lyrics/wish phase, start preloading textures
+      if (this.phase !== 'welcome') {
+        this.photoTexturesLoaded = false;
+        this.loadPhotoTextures();
+      }
+    }, 1200);
 
     // Hide space and warp groups initially
     this.spaceGroup.visible = false;
@@ -1700,8 +1716,8 @@ export class ThreeSceneManager {
         });
       }
 
-      // Warp speed lines during cinematic transition
-      if (this.warpSpeed > 0 && this.phase === 'transition') {
+      // Warp speed lines during cinematic transition (safety check for deferred loading)
+      if (this.warpLines && this.warpSpeed > 0 && this.phase === 'transition') {
         const linePositions = this.warpLines.geometry.attributes.position.array;
         const lineCount = linePositions.length / 3;
 

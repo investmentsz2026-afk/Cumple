@@ -59,11 +59,6 @@ export default function App() {
     }
   };
 
-  // Request microphone permission immediately on page load
-  useEffect(() => {
-    preloadMicrophoneStream();
-  }, []);
-
   // Initialize background music
   useEffect(() => {
     const music = new Audio('/musica.mp3');
@@ -163,6 +158,10 @@ export default function App() {
   const handleStartExperience = () => {
     if (phase !== 'welcome') return;
     playMusic();
+    // Delay microphone preloading slightly to prevent resource contention / Safari crash on page load
+    setTimeout(() => {
+      preloadMicrophoneStream();
+    }, 800);
     setPhase('lyrics');
     setLyricsIndex(0);
   };
@@ -351,11 +350,11 @@ export default function App() {
         );
 
         if (!isCooldownActive && isBlowing) {
-          // Accumulate progress: increment by 0.22 per frame -> ~7.5 seconds of continuous blow at 60fps
-          blowProgressRef.current = Math.min(100, blowProgressRef.current + 0.22);
+          // Accumulate progress: increment by 0.33 per frame -> ~5.0 seconds of continuous blow at 60fps
+          blowProgressRef.current = Math.min(100, blowProgressRef.current + 0.33);
         } else {
           // Slowly decay the progress if they stop blowing
-          blowProgressRef.current = Math.max(0, blowProgressRef.current - 0.18);
+          blowProgressRef.current = Math.max(0, blowProgressRef.current - 0.25);
         }
 
         setBlowProgress(blowProgressRef.current);
@@ -441,8 +440,6 @@ export default function App() {
     setContadorToques(0);
     setIndicadorMensaje("Toca la pantalla mi amor ❤️");
     setPhase('welcome');
-    // Preload the microphone stream again so it's ready for the next candle blow
-    preloadMicrophoneStream();
   };
 
   // ==========================================
