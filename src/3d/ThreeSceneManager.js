@@ -43,6 +43,7 @@ export class ThreeSceneManager {
     this.photoTexturesLoaded = false;
     this.phase = 'welcome';
     this.micVolume = 0;
+    this.blowProgress = 0;
     this.starSpeed = 0.05;
     this.warpSpeed = 0;
     this.stars = null;
@@ -888,17 +889,47 @@ export class ThreeSceneManager {
   updateVolume(volume) {
     this.micVolume = volume;
     if (this.phase === 'mic_active' && this.cakePointLight) {
-      const targetIntensity = 2.2 + volume * 5.0;
-      gsap.to(this.cakePointLight, { intensity: targetIntensity, duration: 0.1 });
+      const progressFactor = Math.max(0, 1 - ((this.blowProgress || 0) / 100));
+      const baseIntensity = 2.2 * progressFactor;
+      const targetIntensity = baseIntensity + volume * 5.0 * progressFactor;
+      gsap.to(this.cakePointLight, { intensity: targetIntensity, duration: 0.05 });
 
       this.flames.forEach((flame) => {
-        const targetScaleX = 1 + volume * 1.5;
-        const targetScaleY = 1 - volume * 0.4;
+        const targetScaleX = (1 + volume * 1.5) * progressFactor;
+        const targetScaleY = (1 - volume * 0.4) * progressFactor;
         gsap.to(flame.scale, {
           x: targetScaleX,
           z: targetScaleX,
           y: targetScaleY,
-          duration: 0.1
+          duration: 0.05
+        });
+      });
+    }
+  }
+
+  updateBlowProgress(blowProgress) {
+    this.blowProgress = blowProgress;
+    
+    // Dynamically shrink the flames and dim the light as the blow progress increases
+    if (this.phase === 'mic_active') {
+      const progressFactor = Math.max(0, 1 - (blowProgress / 100));
+      
+      if (this.cakePointLight) {
+        // Dim the base intensity (from 2.2 down to 0) as progress increases
+        const baseIntensity = 2.2 * progressFactor;
+        const targetIntensity = baseIntensity + this.micVolume * 5.0 * progressFactor;
+        gsap.to(this.cakePointLight, { intensity: targetIntensity, duration: 0.05 });
+      }
+
+      this.flames.forEach((flame) => {
+        // Shrink the flames to 0 as progress goes to 100
+        const targetScaleX = (1 + this.micVolume * 1.5) * progressFactor;
+        const targetScaleY = (1 - this.micVolume * 0.4) * progressFactor;
+        gsap.to(flame.scale, {
+          x: targetScaleX,
+          z: targetScaleX,
+          y: targetScaleY,
+          duration: 0.05
         });
       });
     }

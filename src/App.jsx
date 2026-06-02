@@ -14,6 +14,7 @@ export default function App() {
   const [phase, setPhase] = useState('welcome'); // welcome, lyrics, wish, mic_active, transition, saturn
   const [lyricsIndex, setLyricsIndex] = useState(-1);
   const [micVolume, setMicVolume] = useState(0);
+  const [blowProgress, setBlowProgress] = useState(0);
   const [activePhoto, setActivePhoto] = useState(null);
   const [showFinalMessage, setShowFinalMessage] = useState(false);
   const [contadorToques, setContadorToques] = useState(0);
@@ -25,6 +26,7 @@ export default function App() {
   const preloadedStreamRef = useRef(null);
   const phaseRef = useRef(phase);
   const consecutiveBlowsRef = useRef(0);
+  const blowProgressRef = useRef(0);
   const lluviaCorazonesActivaRef = useRef(false);
   const recognitionRef = useRef(null);
 
@@ -252,27 +254,29 @@ export default function App() {
         // Check if cooldown of 600ms is active (ignores tap/click noise from Comenzar button)
         const isCooldownActive = (Date.now() - startTime) < 600;
 
-        // Trigger if ANY of the filters cross their optimized thresholds:
-        // - blowVol > 0.15 (direct wind rumble)
-        // - breathVol > 0.15 (vocal breath "fuuuuu")
-        // - hissVol > 0.12 (hissing sound "shshshshshhs")
-        // - peakVol > 0.45 (any strong single frequency peak)
-        // - generalVol > 0.22 (general room/voice volume)
-        if (
-          !isCooldownActive &&
-          (blowVol > 0.15 ||
+        // Detect if user is currently blowing
+        const isBlowing = (
+          blowVol > 0.15 ||
           breathVol > 0.15 ||
           hissVol > 0.12 ||
           peakVol > 0.45 ||
-          generalVol > 0.22)
-        ) {
-          consecutiveBlowsRef.current += 1;
-          if (consecutiveBlowsRef.current >= 5) { // Trigger in 5 frames (~80ms) of sustained input
-            triggerExtinguishCandles();
-            return;
-          }
+          generalVol > 0.22
+        );
+
+        if (!isCooldownActive && isBlowing) {
+          // Accumulate progress: increment by 0.22 per frame -> ~7.5 seconds of continuous blow at 60fps
+          blowProgressRef.current = Math.min(100, blowProgressRef.current + 0.22);
         } else {
-          consecutiveBlowsRef.current = Math.max(0, consecutiveBlowsRef.current - 1);
+          // Slowly decay the progress if they stop blowing
+          blowProgressRef.current = Math.max(0, blowProgressRef.current - 0.18);
+        }
+
+        setBlowProgress(blowProgressRef.current);
+
+        // Trigger candle extinguish only when the progress reaches 100%
+        if (blowProgressRef.current >= 100) {
+          triggerExtinguishCandles();
+          return;
         }
 
         requestAnimationFrame(checkVolume);
@@ -333,6 +337,8 @@ export default function App() {
     setShowFinalMessage(false);
     setLyricsIndex(-1);
     setMicVolume(0);
+    setBlowProgress(0);
+    blowProgressRef.current = 0;
     setActivePhoto(null);
     setContadorToques(0);
     setIndicadorMensaje("Toca la pantalla mi amor ❤️");
@@ -493,6 +499,7 @@ export default function App() {
       <ThreeCanvas
         phase={phase}
         micVolume={micVolume}
+        blowProgress={blowProgress}
         onBlowComplete={() => console.log('Velas apagadas')}
         onTransitionComplete={handleTransitionComplete}
         onPhotoSelect={handlePhotoSelectIn3D}
@@ -567,8 +574,11 @@ export default function App() {
             <div className="blow-bar-container">
               <div 
                 className="blow-bar-fill" 
-                style={{ width: `${Math.min(micVolume * 100, 100)}%` }} 
+                style={{ width: `${blowProgress}%` }} 
               />
+            </div>
+            <div className="blow-progress-text" style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.75)', marginTop: '0.3rem', fontWeight: 'bold' }}>
+              Soplando... {Math.round(blowProgress)}%
             </div>
 
             <button 

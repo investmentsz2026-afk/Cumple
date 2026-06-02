@@ -4,6 +4,7 @@ import { ThreeSceneManager } from '../3d/ThreeSceneManager';
 export default function ThreeCanvas({
   phase,
   micVolume,
+  blowProgress,
   onBlowComplete,
   onTransitionComplete,
   onPhotoSelect,
@@ -51,6 +52,13 @@ export default function ThreeCanvas({
       managerRef.current.updateVolume(micVolume);
     }
   }, [micVolume]);
+
+  // Pass blow progress down to the 3D scene in real-time
+  useEffect(() => {
+    if (managerRef.current) {
+      managerRef.current.updateBlowProgress(blowProgress);
+    }
+  }, [blowProgress]);
 
   return <div ref={containerRef} className="canvas-container" />;
 }
