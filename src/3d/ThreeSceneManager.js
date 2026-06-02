@@ -301,7 +301,8 @@ export class ThreeSceneManager {
       vertexColors: true,
       transparent: true,
       blending: THREE.AdditiveBlending,
-      depthWrite: false
+      depthWrite: false,
+      fog: false
     });
 
     this.stars = new THREE.Points(fixedGeom, fixedMaterial);
@@ -336,7 +337,8 @@ export class ThreeSceneManager {
         map: starTex,
         transparent: true,
         blending: THREE.AdditiveBlending,
-        depthWrite: false
+        depthWrite: false,
+        fog: false
       });
 
       const points = new THREE.Points(geom, mat);
@@ -379,7 +381,8 @@ export class ThreeSceneManager {
       map: flareTex,
       transparent: true,
       blending: THREE.AdditiveBlending,
-      depthWrite: false
+      depthWrite: false,
+      fog: false
     });
 
     this.constellationStars = new THREE.Points(constelGeom, constelMaterial);
@@ -411,7 +414,8 @@ export class ThreeSceneManager {
       transparent: true,
       opacity: 0.12,
       blending: THREE.AdditiveBlending,
-      depthWrite: false
+      depthWrite: false,
+      fog: false
     });
 
     this.constellationLines = new THREE.LineSegments(lineGeom, lineMaterial);
@@ -435,7 +439,8 @@ export class ThreeSceneManager {
         opacity: 0, // Starts completely hidden in welcome phase
         depthWrite: false,
         blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide
+        side: THREE.DoubleSide,
+        fog: false
       });
       const mesh = new THREE.Mesh(nebulaGeom, mat);
       mesh.position.set(cfg.x, cfg.y, cfg.z);
@@ -454,7 +459,8 @@ export class ThreeSceneManager {
       color: 0x88ddff,
       shininess: 90,
       specular: 0xffffff,
-      emissive: 0x112233
+      emissive: 0x112233,
+      fog: false
     });
     const sphereA = new THREE.Mesh(sphereGeomA, matA);
     planetAGroup.add(sphereA);
@@ -465,7 +471,8 @@ export class ThreeSceneManager {
       side: THREE.DoubleSide,
       transparent: true,
       opacity: 0.4,
-      blending: THREE.AdditiveBlending
+      blending: THREE.AdditiveBlending,
+      fog: false
     });
     const ringA = new THREE.Mesh(ringGeomA, ringMatA);
     ringA.rotation.x = Math.PI / 2.3;
@@ -481,7 +488,8 @@ export class ThreeSceneManager {
       color: 0xffaa66,
       shininess: 50,
       specular: 0xffffff,
-      emissive: 0x221100
+      emissive: 0x221100,
+      fog: false
     });
     const sphereB = new THREE.Mesh(sphereGeomB, matB);
     planetBGroup.add(sphereB);
@@ -492,7 +500,8 @@ export class ThreeSceneManager {
       side: THREE.DoubleSide,
       transparent: true,
       opacity: 0.35,
-      blending: THREE.AdditiveBlending
+      blending: THREE.AdditiveBlending,
+      fog: false
     });
     const ringB = new THREE.Mesh(ringGeomB, ringMatB);
     ringB.rotation.x = Math.PI / 2.5;
@@ -508,7 +517,8 @@ export class ThreeSceneManager {
       color: 0xb566ff,
       shininess: 110,
       specular: 0xffaaff,
-      emissive: 0x330055
+      emissive: 0x330055,
+      fog: false
     });
     const sphereC = new THREE.Mesh(sphereGeomC, matC);
     planetCGroup.add(sphereC);
@@ -519,7 +529,8 @@ export class ThreeSceneManager {
       transparent: true,
       opacity: 0.3,
       blending: THREE.AdditiveBlending,
-      side: THREE.BackSide
+      side: THREE.BackSide,
+      fog: false
     });
     const atmosC = new THREE.Mesh(atmosGeomC, atmosMatC);
     planetCGroup.add(atmosC);
@@ -559,7 +570,8 @@ export class ThreeSceneManager {
       vertexColors: true,
       transparent: true,
       opacity: 0,
-      blending: THREE.AdditiveBlending
+      blending: THREE.AdditiveBlending,
+      fog: false
     });
 
     this.warpLines = new THREE.LineSegments(geometry, material);
@@ -924,7 +936,8 @@ export class ThreeSceneManager {
           transparent: true,
           opacity: 0.95,
           depthWrite: false,
-          depthTest: true
+          depthTest: true,
+          fog: false
         });
 
         const mesh = new THREE.Mesh(geom, mat);
@@ -949,7 +962,8 @@ export class ThreeSceneManager {
           transparent: true,
           opacity: 0.8,
           depthWrite: false,
-          depthTest: true
+          depthTest: true,
+          fog: false
         });
         const mesh = new THREE.Mesh(geom, mat);
         const angulo = (i / (totalLetras * 1.5)) * Math.PI * 2;
@@ -985,7 +999,8 @@ export class ThreeSceneManager {
       size: 0.12,
       vertexColors: true,
       transparent: true,
-      opacity: 0.65
+      opacity: 0.65,
+      fog: false
     });
 
     const particulas = new THREE.Points(geometry, material);
@@ -1047,7 +1062,8 @@ export class ThreeSceneManager {
       const frameMat = new THREE.MeshStandardMaterial({
         color: 0xfdfdfd,
         roughness: 0.45,
-        side: THREE.DoubleSide
+        side: THREE.DoubleSide,
+        fog: false
       });
       const frame = new THREE.Mesh(frameGeom, frameMat);
       frame.castShadow = true;
@@ -1057,7 +1073,8 @@ export class ThreeSceneManager {
       const photoGeom = new THREE.PlaneGeometry(1.44, 1.44);
       const photoMat = new THREE.MeshBasicMaterial({
         color: 0x181822,
-        side: THREE.DoubleSide
+        side: THREE.DoubleSide,
+        fog: false
       });
 
       const photoMesh = new THREE.Mesh(photoGeom, photoMat);
@@ -1086,7 +1103,8 @@ export class ThreeSceneManager {
           texture.minFilter = THREE.LinearMipmapLinearFilter;
           photoMesh.material = new THREE.MeshBasicMaterial({
             map: texture,
-            side: THREE.DoubleSide
+            side: THREE.DoubleSide,
+            fog: false
           });
           if (this.renderer && this.renderer.initTexture) {
             this.renderer.initTexture(texture);
