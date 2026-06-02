@@ -40,6 +40,7 @@ export class ThreeSceneManager {
     this.cachedHeartGeom = null;
 
     // State
+    this.photoTexturesLoaded = false;
     this.phase = 'welcome';
     this.micVolume = 0;
     this.starSpeed = 0.05;
@@ -699,6 +700,20 @@ export class ThreeSceneManager {
 
       photoGroup.userData = { index, orbit, isZoomed: false };
 
+      this.photosGroup.add(photoGroup);
+      this.photoMeshes.push(photoGroup);
+    });
+  }
+
+  loadPhotoTextures() {
+    if (this.photoTexturesLoaded) return;
+    this.photoTexturesLoaded = true;
+
+    const loader = new THREE.TextureLoader();
+    this.photoMeshes.forEach((photoGroup) => {
+      const photoMesh = photoGroup.children[1];
+      const orbit = photoGroup.userData.orbit;
+
       loader.load(
         orbit.textureUrl,
         (texture) => {
@@ -714,9 +729,6 @@ export class ThreeSceneManager {
         undefined,
         (err) => console.error('Failed to load photo texture:', orbit.textureUrl)
       );
-
-      this.photosGroup.add(photoGroup);
-      this.photoMeshes.push(photoGroup);
     });
   }
 
@@ -841,16 +853,20 @@ export class ThreeSceneManager {
 
       case 'lyrics':
       case 'wish':
+        this.loadPhotoTextures();
         break;
 
       case 'mic_active':
+        this.loadPhotoTextures();
         break;
 
       case 'transition':
+        this.loadPhotoTextures();
         this.performCinematicTransition();
         break;
 
       case 'saturn':
+        this.loadPhotoTextures();
         this.spaceGroup.visible = true;
         this.warpLinesGroup.visible = false;
         
