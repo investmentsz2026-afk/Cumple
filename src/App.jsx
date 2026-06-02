@@ -195,6 +195,7 @@ export default function App() {
       }
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const startTime = Date.now();
       
       const checkVolume = () => {
         if (phaseRef.current !== 'mic_active') return;
@@ -248,21 +249,25 @@ export default function App() {
         const currentFeedbackVol = Math.max(blowVol, breathVol, hissVol, generalVol);
         setMicVolume(currentFeedbackVol);
 
+        // Check if cooldown of 600ms is active (ignores tap/click noise from Comenzar button)
+        const isCooldownActive = (Date.now() - startTime) < 600;
+
         // Trigger if ANY of the filters cross their optimized thresholds:
-        // - blowVol > 0.07 (direct wind rumble)
-        // - breathVol > 0.07 (vocal breath "fuuuuu")
-        // - hissVol > 0.06 (hissing sound "shshshshshhs")
-        // - peakVol > 0.25 (any strong single frequency peak)
-        // - generalVol > 0.12 (general room/voice volume)
+        // - blowVol > 0.15 (direct wind rumble)
+        // - breathVol > 0.15 (vocal breath "fuuuuu")
+        // - hissVol > 0.12 (hissing sound "shshshshshhs")
+        // - peakVol > 0.45 (any strong single frequency peak)
+        // - generalVol > 0.22 (general room/voice volume)
         if (
-          blowVol > 0.07 ||
-          breathVol > 0.07 ||
-          hissVol > 0.06 ||
-          peakVol > 0.25 ||
-          generalVol > 0.12
+          !isCooldownActive &&
+          (blowVol > 0.15 ||
+          breathVol > 0.15 ||
+          hissVol > 0.12 ||
+          peakVol > 0.45 ||
+          generalVol > 0.22)
         ) {
           consecutiveBlowsRef.current += 1;
-          if (consecutiveBlowsRef.current >= 4) { // Trigger in 4 frames (~60ms) of sustained input
+          if (consecutiveBlowsRef.current >= 5) { // Trigger in 5 frames (~80ms) of sustained input
             triggerExtinguishCandles();
             return;
           }
