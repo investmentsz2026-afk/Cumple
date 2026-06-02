@@ -25,6 +25,7 @@ export default function App() {
   const phaseRef = useRef(phase);
   const consecutiveBlowsRef = useRef(0);
   const lluviaCorazonesActivaRef = useRef(false);
+  const recognitionRef = useRef(null);
 
   // Sync ref with phase state
   useEffect(() => {
@@ -46,6 +47,12 @@ export default function App() {
     if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
       audioContextRef.current.close();
       audioContextRef.current = null;
+    }
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+      recognitionRef.current = null;
     }
   };
 
@@ -108,6 +115,47 @@ export default function App() {
       setPhase('mic_active');
       consecutiveBlowsRef.current = 0;
 
+      // Start Speech Recognition as a secondary trigger for voice commands ("soplar", "sopla")
+      const SpeechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognitionClass) {
+        const recognition = new SpeechRecognitionClass();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'es-ES';
+        
+        recognition.onresult = (event) => {
+          if (phaseRef.current !== 'mic_active') return;
+          
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            const transcript = event.results[i][0].transcript.toLowerCase();
+            console.log("Speech recognized:", transcript);
+            
+            if (
+              transcript.includes('soplar') || 
+              transcript.includes('sopla') || 
+              transcript.includes('apagar') || 
+              transcript.includes('velas') || 
+              transcript.includes('vela') ||
+              transcript.includes('soplido')
+            ) {
+              triggerExtinguishCandles();
+              break;
+            }
+          }
+        };
+
+        recognition.onerror = (e) => {
+          console.warn("Speech recognition error:", e.error);
+        };
+
+        try {
+          recognition.start();
+          recognitionRef.current = recognition;
+        } catch (e) {
+          console.error("Speech recognition start failed:", e);
+        }
+      }
+
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       
       const checkVolume = () => {
@@ -162,6 +210,12 @@ export default function App() {
 
   const triggerExtinguishCandles = () => {
     cleanupAudio();
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+      recognitionRef.current = null;
+    }
     setMicVolume(0);
     setPhase('transition');
     if (canvasRef.current) {
