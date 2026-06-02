@@ -421,10 +421,10 @@ export class ThreeSceneManager {
     this.nebulaMeshes = [];
     const nebulaGeom = new THREE.PlaneGeometry(300, 300);
     const nebulaConfigs = [
-      { color1: 'rgba(255, 30, 180, 0.16)', color2: 'rgba(180, 30, 255, 0.03)', z: -160, x: -30, y: 20 },
-      { color1: 'rgba(30, 80, 255, 0.14)', color2: 'rgba(30, 200, 255, 0.02)', z: -180, x: 50, y: -40 },
-      { color1: 'rgba(255, 20, 147, 0.12)', color2: 'rgba(255, 165, 0, 0.02)', z: -150, x: -70, y: -50 },
-      { color1: 'rgba(138, 43, 226, 0.15)', color2: 'rgba(65, 105, 225, 0.03)', z: -170, x: 40, y: 60 }
+      { color1: 'rgba(0, 180, 255, 0.18)', color2: 'rgba(0, 50, 180, 0.03)', z: -160, x: -30, y: 20 },
+      { color1: 'rgba(0, 230, 220, 0.16)', color2: 'rgba(10, 30, 120, 0.02)', z: -180, x: 50, y: -40 },
+      { color1: 'rgba(30, 100, 255, 0.15)', color2: 'rgba(0, 10, 80, 0.02)', z: -150, x: -70, y: -50 },
+      { color1: 'rgba(100, 200, 255, 0.14)', color2: 'rgba(0, 128, 128, 0.02)', z: -170, x: 40, y: 60 }
     ];
 
     nebulaConfigs.forEach((cfg) => {
@@ -432,6 +432,7 @@ export class ThreeSceneManager {
       const mat = new THREE.MeshBasicMaterial({
         map: tex,
         transparent: true,
+        opacity: 0, // Starts completely hidden in welcome phase
         depthWrite: false,
         blending: THREE.AdditiveBlending,
         side: THREE.DoubleSide
@@ -525,6 +526,9 @@ export class ThreeSceneManager {
     planetCGroup.position.set(50, -45, -100);
     this.starsGroup.add(planetCGroup);
     this.distantPlanets.push({ group: planetCGroup, rotSpeed: 0.6, orbitSpeed: 0.012 });
+
+    // Initialize all exoplanets to scale 0.01 so they start hidden
+    this.distantPlanets.forEach(p => p.group.scale.set(0.01, 0.01, 0.01));
   }
 
   buildWarpLines() {
@@ -1197,6 +1201,16 @@ export class ThreeSceneManager {
           this.scene.remove(heart.mesh);
         });
         this.falling3DHearts = [];
+        
+        // Reset nebulas and exoplanets scale
+        if (this.nebulaMeshes) {
+          this.nebulaMeshes.forEach(mesh => {
+            if (mesh.material) mesh.material.opacity = 0;
+          });
+        }
+        if (this.distantPlanets) {
+          this.distantPlanets.forEach(p => p.group.scale.set(0.01, 0.01, 0.01));
+        }
 
         // Animate cake entrance
         gsap.to(this.cakeGroup.scale, {
@@ -1435,6 +1449,30 @@ export class ThreeSceneManager {
           duration: 2.5,
           ease: 'power2.out'
         });
+
+        // Fade in the cyan/blue 3D nebulas
+        if (this.nebulaMeshes) {
+          this.nebulaMeshes.forEach((mesh) => {
+            gsap.to(mesh.material, {
+              opacity: 1.0,
+              duration: 3.0,
+              ease: 'power2.out'
+            });
+          });
+        }
+
+        // Scale up the exoplanets in the background
+        if (this.distantPlanets) {
+          this.distantPlanets.forEach((p) => {
+            gsap.to(p.group.scale, {
+              x: 1,
+              y: 1,
+              z: 1,
+              duration: 3.5,
+              ease: 'power2.out'
+            });
+          });
+        }
       }
     }, 2.5);
 

@@ -491,7 +491,7 @@ export default function App() {
 
   return (
     <div 
-      style={{ width: '100%', height: '100%', position: 'relative' }}
+      className={`app-container phase-${phase}`}
       onClick={handleScreenInteraction}
       onTouchStart={handleScreenInteraction}
     >
