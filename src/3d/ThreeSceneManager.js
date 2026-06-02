@@ -131,10 +131,15 @@ export class ThreeSceneManager {
     dirLight.shadow.bias = -0.001;
     this.scene.add(dirLight);
 
-    // Saturn pink light accents
-    const pinkPointLight = new THREE.PointLight(0xff69b4, 0.8, 60);
-    pinkPointLight.position.set(0, 0, 12);
+    // Saturn pink light accents - make it much brighter for vibrant glow
+    const pinkPointLight = new THREE.PointLight(0xff66cc, 2.5, 80);
+    pinkPointLight.position.set(0, 5, 12);
     this.spaceGroup.add(pinkPointLight);
+
+    // Dedicated white point light to create a powerful, glossy specular highlight on the planet surface
+    const whitePointLight = new THREE.PointLight(0xffffff, 3.2, 50);
+    whitePointLight.position.set(-6, 8, 10);
+    this.spaceGroup.add(whitePointLight);
 
     const backLight = new THREE.DirectionalLight(0x4466aa, 0.7);
     backLight.position.set(-8, -8, -8);
@@ -424,52 +429,53 @@ export class ThreeSceneManager {
     canvas.height = 512;
     const ctx = canvas.getContext('2d');
 
-    // Base background gradient: soft violet-pink cosmic marble
+    // Base background gradient: vibrant glowing pink-purple cosmic marble
     const grad = ctx.createLinearGradient(0, 0, 0, 512);
-    grad.addColorStop(0, '#d15dd1'); // vibrant magenta-pink
-    grad.addColorStop(0.25, '#ffb8ec'); // soft pastel pink
-    grad.addColorStop(0.5, '#7f309c'); // rich cosmic violet
-    grad.addColorStop(0.75, '#ffc2eb'); // bright cotton candy pink
-    grad.addColorStop(1.0, '#a252cc'); // violet-purple
+    grad.addColorStop(0, '#ff1493'); // deep hot pink
+    grad.addColorStop(0.2, '#ff66cc'); // hot pink
+    grad.addColorStop(0.4, '#e066ff'); // bright medium orchid
+    grad.addColorStop(0.6, '#b230ff'); // bright purple
+    grad.addColorStop(0.8, '#ff99ff'); // light pink
+    grad.addColorStop(1.0, '#ffffff'); // pure white glowing band
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 1024, 512);
 
-    // Draw wavy marble veins (white, light pink, violet) for impressive gas giant details
-    for (let i = 0; i < 9; i++) {
+    // Draw wavy marble veins (pure glowing white and intense magenta)
+    for (let i = 0; i < 12; i++) {
       ctx.beginPath();
-      const yOffset = 50 + Math.random() * 400;
+      const yOffset = 30 + Math.random() * 450;
       ctx.moveTo(0, yOffset);
       for (let x = 0; x <= 1024; x += 16) {
-        const wave = Math.sin(x * 0.012 + i * 1.5) * 35 + Math.cos(x * 0.006) * 15;
+        const wave = Math.sin(x * 0.015 + i * 1.8) * 40 + Math.cos(x * 0.008) * 20;
         ctx.lineTo(x, yOffset + wave);
       }
       ctx.lineTo(1024, 512);
       ctx.lineTo(0, 512);
       ctx.closePath();
       
-      const waveGrad = ctx.createLinearGradient(0, yOffset - 50, 0, yOffset + 150);
+      const waveGrad = ctx.createLinearGradient(0, yOffset - 40, 0, yOffset + 120);
       if (i % 3 === 0) {
-        waveGrad.addColorStop(0, 'rgba(255, 255, 255, 0.35)'); // white glow bands
+        waveGrad.addColorStop(0, 'rgba(255, 255, 255, 0.6)'); // highly visible bright white band
         waveGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
       } else if (i % 3 === 1) {
-        waveGrad.addColorStop(0, 'rgba(255, 105, 180, 0.25)'); // hot pink bands
-        waveGrad.addColorStop(1, 'rgba(255, 105, 180, 0)');
+        waveGrad.addColorStop(0, 'rgba(255, 20, 147, 0.5)'); // intense hot pink band
+        waveGrad.addColorStop(1, 'rgba(255, 20, 147, 0)');
       } else {
-        waveGrad.addColorStop(0, 'rgba(216, 191, 216, 0.3)'); // thistle/lavender bands
-        waveGrad.addColorStop(1, 'rgba(216, 191, 216, 0)');
+        waveGrad.addColorStop(0, 'rgba(224, 102, 255, 0.45)'); // lavender glow band
+        waveGrad.addColorStop(1, 'rgba(224, 102, 255, 0)');
       }
       ctx.fillStyle = waveGrad;
       ctx.fill();
     }
 
     // Add extra organic glowing spots
-    for (let i = 0; i < 35; i++) {
+    for (let i = 0; i < 40; i++) {
       const x = Math.random() * 1024;
       const y = Math.random() * 512;
-      const rad = 60 + Math.random() * 150;
+      const rad = 80 + Math.random() * 180;
       const radGrad = ctx.createRadialGradient(x, y, 0, x, y, rad);
-      radGrad.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
-      radGrad.addColorStop(0.4, 'rgba(255, 182, 193, 0.15)');
+      radGrad.addColorStop(0, 'rgba(255, 255, 255, 0.5)');
+      radGrad.addColorStop(0.3, 'rgba(255, 105, 180, 0.3)');
       radGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
       ctx.fillStyle = radGrad;
       ctx.beginPath();
@@ -483,88 +489,16 @@ export class ThreeSceneManager {
     return texture;
   }
 
-  createStarFlareTexture() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 512;
-    const ctx = canvas.getContext('2d');
-
-    ctx.clearRect(0, 0, 512, 512);
-    const cx = 256;
-    const cy = 256;
-
-    // 1. Central glow
-    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 140);
-    grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-    grad.addColorStop(0.15, 'rgba(255, 210, 255, 0.85)');
-    grad.addColorStop(0.4, 'rgba(230, 100, 255, 0.3)');
-    grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 256, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 2. Starburst rays (horizontal, vertical, diagonals)
-    // Ray 1: Horizontal
-    let rayGradH = ctx.createLinearGradient(0, cy, 512, cy);
-    rayGradH.addColorStop(0, 'rgba(255, 255, 255, 0)');
-    rayGradH.addColorStop(0.5, 'rgba(255, 230, 255, 0.95)');
-    rayGradH.addColorStop(1, 'rgba(255, 255, 255, 0)');
-    ctx.fillStyle = rayGradH;
-    ctx.fillRect(0, cy - 8, 512, 16);
-
-    // Ray 2: Vertical
-    let rayGradV = ctx.createLinearGradient(cx, 0, cx, 512);
-    rayGradV.addColorStop(0, 'rgba(255, 255, 255, 0)');
-    rayGradV.addColorStop(0.5, 'rgba(255, 230, 255, 0.95)');
-    rayGradV.addColorStop(1, 'rgba(255, 255, 255, 0)');
-    ctx.fillStyle = rayGradV;
-    ctx.fillRect(cx - 8, 0, 16, 512);
-
-    // Ray 3: Diagonal 1
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(Math.PI / 4);
-    let rayGradD1 = ctx.createLinearGradient(-256, 0, 256, 0);
-    rayGradD1.addColorStop(0, 'rgba(255, 255, 255, 0)');
-    rayGradD1.addColorStop(0.5, 'rgba(255, 220, 255, 0.75)');
-    rayGradD1.addColorStop(1, 'rgba(255, 255, 255, 0)');
-    ctx.fillStyle = rayGradD1;
-    ctx.fillRect(-256, -5, 512, 10);
-    ctx.restore();
-
-    // Ray 4: Diagonal 2
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(-Math.PI / 4);
-    let rayGradD2 = ctx.createLinearGradient(-256, 0, 256, 0);
-    rayGradD2.addColorStop(0, 'rgba(255, 255, 255, 0)');
-    rayGradD2.addColorStop(0.5, 'rgba(255, 220, 255, 0.75)');
-    rayGradD2.addColorStop(1, 'rgba(255, 255, 255, 0)');
-    ctx.fillStyle = rayGradD2;
-    ctx.fillRect(-256, -5, 512, 10);
-    ctx.restore();
-
-    const texture = new THREE.CanvasTexture(canvas);
-    return texture;
-  }
-
   buildSaturn() {
     const planetGeom = new THREE.SphereGeometry(4, 128, 128);
 
-    // High-gloss iridescent pink/violet material (self-illuminating emissive like a sun)
-    const saturnMaterial = new THREE.MeshPhysicalMaterial({
+    // MeshPhongMaterial is highly responsive to specular and emissive lights without environment maps
+    const saturnMaterial = new THREE.MeshPhongMaterial({
       map: this.createGlowPlanetTexture(),
-      roughness: 0.02,             // Super reflective smooth surface
-      metalness: 0.05,
-      clearcoat: 1.0,              // Clear varnish coat for bright mirror reflections
-      clearcoatRoughness: 0.01,
-      iridescence: 0.9,            // Luminous iridescence
-      iridescenceIOR: 1.5,
-      specularIntensity: 2.0,      // Intense bright specular highlight
-      specularColor: new THREE.Color(0xffffff),
-      emissive: new THREE.Color(0xff88ff), // Strong pink/magenta glow
-      emissiveIntensity: 0.85,     // High emissive energy
+      shininess: 150,              // Sharp specular highlights
+      specular: new THREE.Color(0xffffff), // Pure white reflections
+      emissive: new THREE.Color(0xff33aa), // Intense hot pink/magenta emissive glow
+      emissiveIntensity: 0.65,     // High glow so it is never dark or dull
       transparent: false,
       depthWrite: true,
       depthTest: true
@@ -576,11 +510,10 @@ export class ThreeSceneManager {
     this.saturnMesh.renderOrder = 1; 
     this.spaceGroup.add(this.saturnMesh);
 
-    // Additive volumetric glow: 3 concentric shells creating a smooth glowing halo
-    // Layer 1: Inner white-pink glow (radius 4.18)
-    const glow1Geom = new THREE.SphereGeometry(4.18, 64, 64);
-    const glow1Mat = new THREE.MeshBasicMaterial({
-      color: 0xfff0ff,
+    // Glowing pink/violet outer atmospheric glow (additive blending, larger radius and opacity)
+    const atmosferaGeom = new THREE.SphereGeometry(4.40, 64, 64);
+    const atmosferaMat = new THREE.MeshPhongMaterial({
+      color: 0xff33cc,
       transparent: true,
       opacity: 0.35,
       side: THREE.BackSide,
@@ -588,53 +521,9 @@ export class ThreeSceneManager {
       depthWrite: false,
       depthTest: true
     });
-    const glow1 = new THREE.Mesh(glow1Geom, glow1Mat);
-    glow1.renderOrder = 2;
-    this.saturnMesh.add(glow1);
-
-    // Layer 2: Mid pink glow (radius 4.7)
-    const glow2Geom = new THREE.SphereGeometry(4.7, 64, 64);
-    const glow2Mat = new THREE.MeshBasicMaterial({
-      color: 0xff55ff,
-      transparent: true,
-      opacity: 0.20,
-      side: THREE.BackSide,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      depthTest: true
-    });
-    const glow2 = new THREE.Mesh(glow2Geom, glow2Mat);
-    glow2.renderOrder = 2;
-    this.saturnMesh.add(glow2);
-
-    // Layer 3: Outer violet glow (radius 5.6)
-    const glow3Geom = new THREE.SphereGeometry(5.6, 64, 64);
-    const glow3Mat = new THREE.MeshBasicMaterial({
-      color: 0x9933ff,
-      transparent: true,
-      opacity: 0.10,
-      side: THREE.BackSide,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      depthTest: true
-    });
-    const glow3 = new THREE.Mesh(glow3Geom, glow3Mat);
-    glow3.renderOrder = 2;
-    this.saturnMesh.add(glow3);
-
-    // Starburst lens flare sprite (depthTest = true, depthWrite = false so it sits at center and extends rays outwards)
-    const starFlareMat = new THREE.SpriteMaterial({
-      map: this.createStarFlareTexture(),
-      color: 0xffffff,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      depthTest: true
-    });
-    const starFlareSprite = new THREE.Sprite(starFlareMat);
-    starFlareSprite.scale.set(24, 24, 1); // Large rays extending out of the planet's radius
-    starFlareSprite.renderOrder = 3;
-    this.spaceGroup.add(starFlareSprite);
+    const atmosfera = new THREE.Mesh(atmosferaGeom, atmosferaMat);
+    atmosfera.renderOrder = 2;
+    this.saturnMesh.add(atmosfera);
 
     // Glowing Concentric Rings (Additive Blending)
     const innerRingGeom = new THREE.RingGeometry(4.7, 4.9, 64);
@@ -659,21 +548,21 @@ export class ThreeSceneManager {
     ring1.rotation.x = Math.PI / 2;
     ring1.receiveShadow = true;
     ring1.castShadow = true;
-    ring1.renderOrder = 4;
+    ring1.renderOrder = 3;
     this.spaceGroup.add(ring1);
 
     const ring2 = new THREE.Mesh(middleRingGeom, ringMaterial);
     ring2.rotation.x = Math.PI / 2;
     ring2.receiveShadow = true;
     ring2.castShadow = true;
-    ring2.renderOrder = 4;
+    ring2.renderOrder = 3;
     this.spaceGroup.add(ring2);
 
     const ring3 = new THREE.Mesh(outerRingGeom, ringMaterial);
     ring3.rotation.x = Math.PI / 2;
     ring3.receiveShadow = true;
     ring3.castShadow = true;
-    ring3.renderOrder = 4;
+    ring3.renderOrder = 3;
     this.spaceGroup.add(ring3);
 
     this.rebuildTextRing();
