@@ -594,3 +594,66 @@ body, html, #root {
     opacity: 0;
   }
 }
+
+/* Music Toggle Button styling */
+.music-toggle-btn {
+  position: absolute;
+  top: 2rem;
+  left: 2rem;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  color: white;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  z-index: 30;
+}
+
+.music-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(255, 94, 132, 0.2);
+}
+
+.music-toggle-btn:active {
+  transform: scale(0.95);
+}
+
+.music-pulse-icon {
+  animation: pulseMusicIcon 2s infinite ease-in-out;
+  color: var(--accent-pink);
+}
+
+@keyframes pulseMusicIcon {
+  0% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 1;
+    filter: drop-shadow(0 0 5px var(--accent-pink-glow));
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+}
+
+@media (max-width: 600px) {
+  .music-toggle-btn {
+    top: 1rem;
+    left: 1rem;
+    width: 36px;
+    height: 36px;
+  }
+}

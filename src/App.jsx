@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ThreeCanvas from './components/ThreeCanvas';
 import confetti from 'canvas-confetti';
-import { Mic, X, Heart, Sparkles, Volume2 } from 'lucide-react';
+import { Mic, X, Heart, Sparkles, Volume2, VolumeX } from 'lucide-react';
 
 const LYRICS = [
   "Cumpleaños feliz,",
@@ -19,6 +19,7 @@ export default function App() {
   const [showFinalMessage, setShowFinalMessage] = useState(false);
   const [contadorToques, setContadorToques] = useState(0);
   const [indicadorMensaje, setIndicadorMensaje] = useState("Toca la pantalla mi amor ❤️");
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const canvasRef = useRef(null);
   const audioContextRef = useRef(null);
@@ -30,30 +31,105 @@ export default function App() {
   const lluviaCorazonesActivaRef = useRef(false);
   const recognitionRef = useRef(null);
 
+  const bgMusicRef = useRef(null);
+  const musicUnlockedRef = useRef(false);
+
   // Sync ref with phase state
   useEffect(() => {
     phaseRef.current = phase;
   }, [phase]);
 
+  // Helper to preload microphone stream
+  const preloadMicrophoneStream = async () => {
+    try {
+      const constraints = {
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        }
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      preloadedStreamRef.current = stream;
+      console.log("Microphone stream preloaded and permission granted.");
+      return stream;
+    } catch (err) {
+      console.warn("Microphone preloading failed or denied:", err);
+      return null;
+    }
+  };
+
   // Request microphone permission immediately on page load
   useEffect(() => {
-    const preloadMic = async () => {
-      try {
-        const constraints = {
-          audio: {
-            echoCancellation: false,
-            noiseSuppression: false,
-            autoGainControl: false
-          }
-        };
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        preloadedStreamRef.current = stream;
-        console.log("Microphone stream preloaded and permission granted.");
-      } catch (err) {
-        console.warn("Microphone preloading failed or denied:", err);
+    preloadMicrophoneStream();
+  }, []);
+
+  // Initialize background music
+  useEffect(() => {
+    const music = new Audio('/musica.mp3');
+    music.loop = true;
+    music.volume = 0.55;
+    bgMusicRef.current = music;
+
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+    music.addEventListener('play', handlePlay);
+    music.addEventListener('pause', handlePause);
+
+    // Try playing immediately (works if browser autoplay is relaxed)
+    music.play().then(() => {
+      setIsPlaying(true);
+      musicUnlockedRef.current = true;
+    }).catch(err => {
+      console.log("Music autoplay blocked, waiting for first user interaction.");
+    });
+
+    return () => {
+      music.removeEventListener('play', handlePlay);
+      music.removeEventListener('pause', handlePause);
+      music.pause();
+    };
+  }, []);
+
+  // Helper to play background music if not playing
+  const playMusic = () => {
+    if (bgMusicRef.current && bgMusicRef.current.paused) {
+      bgMusicRef.current.play().then(() => {
+        setIsPlaying(true);
+        musicUnlockedRef.current = true;
+      }).catch(err => {
+        console.warn("Music play failed:", err);
+      });
+    }
+  };
+
+  // Listen to first touch/click interaction to unlock and play music
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      if (musicUnlockedRef.current) {
+        window.removeEventListener('click', handleFirstInteraction);
+        window.removeEventListener('touchstart', handleFirstInteraction);
+        return;
+      }
+      if (bgMusicRef.current) {
+        bgMusicRef.current.play().then(() => {
+          setIsPlaying(true);
+          musicUnlockedRef.current = true;
+          window.removeEventListener('click', handleFirstInteraction);
+          window.removeEventListener('touchstart', handleFirstInteraction);
+        }).catch(err => {
+          console.warn("Play on interaction blocked:", err);
+        });
       }
     };
-    preloadMic();
+
+    window.addEventListener('click', handleFirstInteraction);
+    window.addEventListener('touchstart', handleFirstInteraction);
+
+    return () => {
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+    };
   }, []);
 
   // Clean up audio on unmount
@@ -86,6 +162,7 @@ export default function App() {
 
   const handleStartExperience = () => {
     if (phase !== 'welcome') return;
+    playMusic();
     setPhase('lyrics');
     setLyricsIndex(0);
   };
@@ -113,6 +190,19 @@ export default function App() {
 
   const handleActivateMicrophone = async () => {
     try {
+      playMusic();
+
+      // Create and resume the AudioContext synchronously inside user gesture
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      let audioCtx = audioContextRef.current;
+      if (!audioCtx || audioCtx.state === 'closed') {
+        audioCtx = new AudioContextClass();
+        audioContextRef.current = audioCtx;
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume(); // resume synchronously
+      }
+
       // Re-use or obtain the stream from our preloaded stream.
       // If the preloaded stream was denied or stopped, request a new one.
       let stream = preloadedStreamRef.current;
@@ -131,11 +221,7 @@ export default function App() {
       }
       streamRef.current = stream;
 
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      const audioCtx = new AudioContextClass();
-      audioContextRef.current = audioCtx;
-
-      // Force resume AudioContext for iOS Safari compatibility
+      // Force resume again after async operation
       if (audioCtx.state === 'suspended') {
         await audioCtx.resume();
       }
@@ -334,6 +420,17 @@ export default function App() {
     }
   };
 
+  const toggleMusic = (e) => {
+    e.stopPropagation();
+    if (bgMusicRef.current) {
+      if (isPlaying) {
+        bgMusicRef.current.pause();
+      } else {
+        bgMusicRef.current.play().catch(err => console.warn("Failed to play on toggle:", err));
+      }
+    }
+  };
+
   const handleResetExperience = () => {
     setShowFinalMessage(false);
     setLyricsIndex(-1);
@@ -344,6 +441,8 @@ export default function App() {
     setContadorToques(0);
     setIndicadorMensaje("Toca la pantalla mi amor ❤️");
     setPhase('welcome');
+    // Preload the microphone stream again so it's ready for the next candle blow
+    preloadMicrophoneStream();
   };
 
   // ==========================================
@@ -509,6 +608,15 @@ export default function App() {
 
       {/* UI OVERLAYS */}
       <div className="ui-overlay">
+        {/* Floating Play/Pause music button at top-left */}
+        <button 
+          className="music-toggle-btn interactive-element"
+          onClick={toggleMusic}
+          onTouchStart={toggleMusic}
+          title={isPlaying ? "Pausar música" : "Reproducir música"}
+        >
+          {isPlaying ? <Volume2 size={20} className="music-pulse-icon" /> : <VolumeX size={20} />}
+        </button>
         
         {/* TOP LAYER: Mic volume feedback or close button */}
         <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
