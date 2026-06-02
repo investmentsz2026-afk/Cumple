@@ -113,21 +113,34 @@ export default function App() {
       const checkVolume = () => {
         if (phaseRef.current !== 'mic_active') return;
 
-        analyser.getByteTimeDomainData(dataArray);
+        // Use getByteFrequencyData instead of TimeDomain for highly stable frequency analysis
+        analyser.getByteFrequencyData(dataArray);
 
-        let sum = 0;
+        // 1. Calculate general average frequency volume (0 to 255)
+        let total = 0;
         for (let i = 0; i < dataArray.length; i++) {
-          const val = (dataArray[i] - 128) / 128;
-          sum += val * val;
+          total += dataArray[i];
         }
-        const rms = Math.sqrt(sum / dataArray.length);
-        const normalizedVol = Math.min(rms * 5.0, 1.0);
+        const generalAvg = total / dataArray.length;
+
+        // 2. Calculate low frequency average (bins 0 to 12 cover frequencies up to ~1000Hz, where wind/blowing noise peaks)
+        let lowSum = 0;
+        const lowBins = Math.min(12, dataArray.length);
+        for (let i = 0; i < lowBins; i++) {
+          lowSum += dataArray[i];
+        }
+        const lowAvg = lowSum / lowBins;
+
+        // Take the maximum of both to be extremely sensitive to either general loud sound or breath blowing
+        const maxVal = Math.max(generalAvg, lowAvg);
+        const normalizedVol = maxVal / 255.0; // scale to 0.0 - 1.0
+        
         setMicVolume(normalizedVol);
 
-        // Lower threshold slightly (from 0.24 to 0.18) for higher sensitivity to breath/blowing
-        if (normalizedVol > 0.18) {
+        // A threshold of 0.12 is extremely responsive for blowing, but stays safely above ambient silence
+        if (normalizedVol > 0.12) {
           consecutiveBlowsRef.current += 1;
-          if (consecutiveBlowsRef.current >= 8) {
+          if (consecutiveBlowsRef.current >= 5) { // Only requires 5 frames (approx 80ms) of sustained volume to trigger!
             triggerExtinguishCandles();
             return;
           }
