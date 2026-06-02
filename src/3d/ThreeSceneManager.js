@@ -418,57 +418,106 @@ export class ThreeSceneManager {
     this.cakeGroup.scale.set(0.01, 0.01, 0.01);
   }
 
+  createGlowPlanetTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    // Base background gradient: soft violet-pink cosmic marble
+    const grad = ctx.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0, '#d15dd1'); // vibrant magenta-pink
+    grad.addColorStop(0.25, '#ffb8ec'); // soft pastel pink
+    grad.addColorStop(0.5, '#7f309c'); // rich cosmic violet
+    grad.addColorStop(0.75, '#ffc2eb'); // bright cotton candy pink
+    grad.addColorStop(1.0, '#a252cc'); // violet-purple
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 1024, 512);
+
+    // Draw wavy marble veins (white, light pink, violet) for impressive gas giant details
+    for (let i = 0; i < 9; i++) {
+      ctx.beginPath();
+      const yOffset = 50 + Math.random() * 400;
+      ctx.moveTo(0, yOffset);
+      for (let x = 0; x <= 1024; x += 16) {
+        const wave = Math.sin(x * 0.012 + i * 1.5) * 35 + Math.cos(x * 0.006) * 15;
+        ctx.lineTo(x, yOffset + wave);
+      }
+      ctx.lineTo(1024, 512);
+      ctx.lineTo(0, 512);
+      ctx.closePath();
+      
+      const waveGrad = ctx.createLinearGradient(0, yOffset - 50, 0, yOffset + 150);
+      if (i % 3 === 0) {
+        waveGrad.addColorStop(0, 'rgba(255, 255, 255, 0.35)'); // white glow bands
+        waveGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      } else if (i % 3 === 1) {
+        waveGrad.addColorStop(0, 'rgba(255, 105, 180, 0.25)'); // hot pink bands
+        waveGrad.addColorStop(1, 'rgba(255, 105, 180, 0)');
+      } else {
+        waveGrad.addColorStop(0, 'rgba(216, 191, 216, 0.3)'); // thistle/lavender bands
+        waveGrad.addColorStop(1, 'rgba(216, 191, 216, 0)');
+      }
+      ctx.fillStyle = waveGrad;
+      ctx.fill();
+    }
+
+    // Add extra organic glowing spots
+    for (let i = 0; i < 35; i++) {
+      const x = Math.random() * 1024;
+      const y = Math.random() * 512;
+      const rad = 60 + Math.random() * 150;
+      const radGrad = ctx.createRadialGradient(x, y, 0, x, y, rad);
+      radGrad.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+      radGrad.addColorStop(0.4, 'rgba(255, 182, 193, 0.15)');
+      radGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = radGrad;
+      ctx.beginPath();
+      ctx.arc(x, y, rad, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+    return texture;
+  }
+
   buildSaturn() {
     const planetGeom = new THREE.SphereGeometry(4, 128, 128);
 
-    // CRITICAL FIX: Ensure the planet material is strictly opaque, writes to depth, and tests depth.
-    // This blocks transparent back-letters from rendering on top of the planet sphere!
-    const saturnFallbackMat = new THREE.MeshPhongMaterial({
-      color: 0xddaa77,
-      shininess: 10,
-      specular: new THREE.Color(0x333333),
+    // Dynamic high-gloss iridescent pink/violet material (replaces the brown texture loader)
+    const saturnMaterial = new THREE.MeshPhysicalMaterial({
+      map: this.createGlowPlanetTexture(),
+      roughness: 0.05,             // Mirror-like glossiness
+      metalness: 0.05,
+      clearcoat: 1.0,              // Lacquer clearcoat for high reflections
+      clearcoatRoughness: 0.02,
+      iridescence: 0.9,            // Rainbow iridescent shimmer (bubble reflection)
+      iridescenceIOR: 1.5,
+      specularIntensity: 1.0,
+      specularColor: new THREE.Color(0xffffff),
+      emissive: new THREE.Color(0x300c3b), // Soft violet emissive glow
+      emissiveIntensity: 0.45,
       transparent: false,
       depthWrite: true,
       depthTest: true
     });
 
-    this.saturnMesh = new THREE.Mesh(planetGeom, saturnFallbackMat);
+    this.saturnMesh = new THREE.Mesh(planetGeom, saturnMaterial);
     this.saturnMesh.castShadow = true;
     this.saturnMesh.receiveShadow = true;
-    // Lower renderOrder ensures opaque planet renders and fills z-buffer before transparent letters
     this.saturnMesh.renderOrder = 1; 
     this.spaceGroup.add(this.saturnMesh);
 
-    const URL_TEXTURA_SATURNO = 'https://bcodestorague.anteroteobaldob.workers.dev/share/anteroteobaldob_gmail_com/TEXTURAS/textura_sat.jpg';
-    const textureLoader = new THREE.TextureLoader();
-    
-    textureLoader.load(
-      URL_TEXTURA_SATURNO,
-      (textura) => {
-        textura.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
-        this.saturnMesh.material = new THREE.MeshPhongMaterial({
-          map: textura,
-          bumpScale: 0.05,
-          specular: new THREE.Color(0x333333),
-          shininess: 15,
-          transparent: false,
-          depthWrite: true,
-          depthTest: true
-        });
-        if (this.renderer && this.renderer.initTexture) {
-          this.renderer.initTexture(textura);
-        }
-      },
-      undefined,
-      (err) => console.warn('Failed to load Saturn cloud texture:', err)
-    );
-
-    const atmosferaGeom = new THREE.SphereGeometry(4.15, 64, 64);
+    // Glowing pink/violet outer atmospheric glow (additive blending)
+    const atmosferaGeom = new THREE.SphereGeometry(4.18, 64, 64);
     const atmosferaMat = new THREE.MeshPhongMaterial({
-      color: 0x88aaff,
+      color: 0xff99ff,
       transparent: true,
-      opacity: 0.08,
+      opacity: 0.18,
       side: THREE.BackSide,
+      blending: THREE.AdditiveBlending,
       depthWrite: false,
       depthTest: true
     });
@@ -476,38 +525,47 @@ export class ThreeSceneManager {
     atmosfera.renderOrder = 2;
     this.saturnMesh.add(atmosfera);
 
-    const innerRingGeom = new THREE.RingGeometry(4.8, 5.2, 64);
-    const outerRingGeom = new THREE.RingGeometry(8.8, 9.2, 64);
+    // Glowing Concentric Rings (Additive Blending)
+    const innerRingGeom = new THREE.RingGeometry(4.7, 4.9, 64);
+    const middleRingGeom = new THREE.RingGeometry(6.6, 6.8, 64);
+    const outerRingGeom = new THREE.RingGeometry(8.5, 8.7, 64);
 
     const ringMatOptions = {
-      color: 0xffccff,
+      color: 0xffebff,
+      emissive: 0xff55ff,
+      emissiveIntensity: 2.0,
       side: THREE.DoubleSide,
       transparent: true,
-      opacity: 0.3,
-      emissive: 0x330022,
+      opacity: 0.65,
+      blending: THREE.AdditiveBlending,
       depthWrite: false,
       depthTest: true
     };
 
-    const materialAnilloInterno = new THREE.MeshPhongMaterial(ringMatOptions);
-    const materialAnilloExterno = new THREE.MeshPhongMaterial(ringMatOptions);
+    const ringMaterial = new THREE.MeshPhongMaterial(ringMatOptions);
 
-    const anilloInterno = new THREE.Mesh(innerRingGeom, materialAnilloInterno);
-    anilloInterno.rotation.x = Math.PI / 2;
-    anilloInterno.receiveShadow = true;
-    anilloInterno.castShadow = true;
-    anilloInterno.renderOrder = 3;
-    this.spaceGroup.add(anilloInterno);
+    const ring1 = new THREE.Mesh(innerRingGeom, ringMaterial);
+    ring1.rotation.x = Math.PI / 2;
+    ring1.receiveShadow = true;
+    ring1.castShadow = true;
+    ring1.renderOrder = 3;
+    this.spaceGroup.add(ring1);
 
-    const anilloExterno = new THREE.Mesh(outerRingGeom, materialAnilloExterno);
-    anilloExterno.rotation.x = Math.PI / 2;
-    anilloExterno.receiveShadow = true;
-    anilloExterno.castShadow = true;
-    anilloExterno.renderOrder = 3;
-    this.spaceGroup.add(anilloExterno);
+    const ring2 = new THREE.Mesh(middleRingGeom, ringMaterial);
+    ring2.rotation.x = Math.PI / 2;
+    ring2.receiveShadow = true;
+    ring2.castShadow = true;
+    ring2.renderOrder = 3;
+    this.spaceGroup.add(ring2);
+
+    const ring3 = new THREE.Mesh(outerRingGeom, ringMaterial);
+    ring3.rotation.x = Math.PI / 2;
+    ring3.receiveShadow = true;
+    ring3.castShadow = true;
+    ring3.renderOrder = 3;
+    this.spaceGroup.add(ring3);
 
     this.rebuildTextRing();
-
     this.buildFloatingParticulasEspacio();
 
     this.spaceGroup.rotation.z = 0.25;
