@@ -68,7 +68,7 @@ export default function App() {
   useEffect(() => {
     const music = new Audio('/musica.mp3');
     music.loop = true;
-    music.volume = 2.0;
+    music.volume = 1.0;
     bgMusicRef.current = music;
 
     const handlePlay = () => setIsPlaying(true);
