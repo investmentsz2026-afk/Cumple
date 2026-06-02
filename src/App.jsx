@@ -146,6 +146,7 @@ export default function App() {
       const source = audioCtx.createMediaStreamSource(stream);
       source.connect(analyser);
 
+      phaseRef.current = 'mic_active'; // Sincronización inmediata para evitar condiciones de carrera en checkVolume
       setPhase('mic_active');
       consecutiveBlowsRef.current = 0;
 
