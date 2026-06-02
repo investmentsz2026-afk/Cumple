@@ -694,8 +694,8 @@ export class ThreeSceneManager {
     // 16 user-provided images from the public directory (img1.jpeg - img16.jpeg)
     const baseImages = Array.from({ length: 16 }, (_, i) => `/img${i + 1}.jpeg`);
     
-    // Triple the list of 16 images to make 48 cards
-    const textures = [...baseImages, ...baseImages, ...baseImages];
+    // Quadruple the list of 16 images to make 64 cards
+    const textures = [...baseImages, ...baseImages, ...baseImages, ...baseImages];
     
     // Randomize/shuffle the textures using Fisher-Yates algorithm
     for (let i = textures.length - 1; i > 0; i--) {
@@ -708,12 +708,13 @@ export class ThreeSceneManager {
 
     this.photoOrbits = [];
     
-    // Distribute 48 photos into 3 clean concentric flat orbits (16 photos per orbit)
+    // Distribute 64 photos into 4 clean concentric flat orbits (16 photos per orbit)
     const photosPerOrbit = 16;
     const orbits = [
       { radius: 10.8, speed: 0.08, offset: 0 },
       { radius: 13.6, speed: 0.065, offset: Math.PI / 16 },
-      { radius: 16.4, speed: 0.05, offset: Math.PI / 8 }
+      { radius: 16.4, speed: 0.05, offset: Math.PI / 8 },
+      { radius: 19.2, speed: 0.038, offset: Math.PI / 4 }
     ];
 
     for (let i = 0; i < photoCount; i++) {
