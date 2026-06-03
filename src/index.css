@@ -350,8 +350,10 @@ body, html, #root {
   top: 0;
   left: 0;
   z-index: 40;
-  background: transparent;
-  pointer-events: none;
+  background: rgba(2, 4, 12, 0.7); /* Fondo oscuro semitransparente para legibilidad */
+  backdrop-filter: blur(6px); /* Desenfoque del fondo 3D para centrar la atención en el texto */
+  -webkit-backdrop-filter: blur(6px);
+  pointer-events: auto;
 }
 
 .final-card {
@@ -359,6 +361,9 @@ body, html, #root {
   padding: 2.5rem;
   gap: 2rem;
   pointer-events: auto;
+  background: rgba(4, 5, 15, 0.85) !important; /* Tarjeta de vidrio más oscura para alto contraste */
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.9), 0 0 30px rgba(255, 94, 132, 0.15);
 }
 
 .final-title {
@@ -563,7 +568,7 @@ body, html, #root {
   cursor: pointer;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
   transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-  z-index: 30;
+  z-index: 60; /* z-index superior para mantenerse accesible sobre los overlays */
 }
 
 .music-toggle-btn:hover {
@@ -606,3 +611,50 @@ body, html, #root {
     height: 36px;
   }
 }
+
+/* Gift Box Button Style and Pulsing/Tilted Hover Effects */
+.gift-box-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 3rem;
+  display: inline-block;
+  outline: none;
+  position: relative;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.3s ease;
+  animation: pulseGift 2s infinite ease-in-out;
+  pointer-events: auto;
+}
+
+.gift-box-btn:hover {
+  transform: scale(1.25) rotate(5deg);
+  filter: drop-shadow(0 0 12px var(--accent-gold));
+}
+
+.gift-box-btn:active {
+  transform: scale(0.95);
+}
+
+@keyframes pulseGift {
+  0% {
+    transform: scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 4px rgba(245, 198, 101, 0.3));
+  }
+  30% {
+    transform: scale(1.12) rotate(-5deg);
+    filter: drop-shadow(0 0 12px rgba(245, 198, 101, 0.7));
+  }
+  50% {
+    transform: scale(1.08) rotate(5deg);
+    filter: drop-shadow(0 0 8px rgba(245, 198, 101, 0.5));
+  }
+  70% {
+    transform: scale(1.12) rotate(-3deg);
+    filter: drop-shadow(0 0 12px rgba(245, 198, 101, 0.7));
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 4px rgba(245, 198, 101, 0.3));
+  }
+}
+

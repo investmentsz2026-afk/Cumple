@@ -590,14 +590,6 @@ export default function App() {
                     e.stopPropagation();
                     setShowGiftModal(true);
                   }}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '2.5rem',
-                    padding: '0.2rem',
-                    outline: 'none'
-                  }}
                 >
                   🎁
                 </button>
@@ -645,8 +637,15 @@ export default function App() {
             <img 
               src="/regalo.png" 
               alt="Tu regalo" 
-              className="photo-detail-image"
-              style={{ width: '100%', borderRadius: '12px', border: '3px solid #f5c665', aspectRatio: 'auto' }}
+              style={{ 
+                width: '100%', 
+                maxHeight: '55vh',
+                borderRadius: '12px', 
+                border: '3px solid #f5c665', 
+                aspectRatio: 'auto',
+                objectFit: 'contain',
+                boxShadow: '0 5px 25px rgba(245, 198, 101, 0.4)'
+              }}
             />
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', width: '100%', marginTop: '0.5rem' }}>
               <button 
