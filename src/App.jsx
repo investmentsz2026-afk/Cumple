@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import ThreeCanvas from './components/ThreeCanvas';
 import confetti from 'canvas-confetti';
 import { Mic, X, Heart, Sparkles, Volume2, VolumeX } from 'lucide-react';
+import regaloImg from './assets/regalo.png';
 
 const LYRICS = [
   "Cumpleaños feliz,",
@@ -635,7 +636,7 @@ export default function App() {
               🎁 ¡Sorpresa! 🎁
             </h2>
             <img 
-              src="/regalo.png" 
+              src={regaloImg} 
               alt="Tu regalo" 
               style={{ 
                 width: '100%', 
