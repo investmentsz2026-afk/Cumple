@@ -39,30 +39,7 @@ export default function App() {
     phaseRef.current = phase;
   }, [phase]);
 
-  // Helper to preload microphone stream
-  const preloadMicrophoneStream = async () => {
-    try {
-      const constraints = {
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false
-        }
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      preloadedStreamRef.current = stream;
-      console.log("Microphone stream preloaded and permission granted.");
-      return stream;
-    } catch (err) {
-      console.warn("Microphone preloading failed or denied:", err);
-      return null;
-    }
-  };
-
-  // Request microphone permission immediately on page load
-  useEffect(() => {
-    preloadMicrophoneStream();
-  }, []);
+  // No microphone preloading needed (simulated soplido)
 
   // Initialize background music
   useEffect(() => {
@@ -140,24 +117,7 @@ export default function App() {
   }, []);
 
   const cleanupAudio = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    if (preloadedStreamRef.current) {
-      preloadedStreamRef.current.getTracks().forEach(track => track.stop());
-      preloadedStreamRef.current = null;
-    }
-    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {}
-      recognitionRef.current = null;
-    }
+    // No-op (microphone deactivated)
   };
 
   const handleStartExperience = () => {
@@ -188,194 +148,45 @@ export default function App() {
     return () => clearInterval(timer);
   }, [phase]);
 
-  const handleActivateMicrophone = async () => {
-    try {
-      playMusic();
+  const handleActivateMicrophone = () => {
+    playMusic();
+    setPhase('mic_active');
+    phaseRef.current = 'mic_active';
+    blowProgressRef.current = 0;
+    setBlowProgress(0);
 
-      // Create and resume the AudioContext synchronously inside user gesture
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      let audioCtx = audioContextRef.current;
-      if (!audioCtx || audioCtx.state === 'closed') {
-        audioCtx = new AudioContextClass();
-        audioContextRef.current = audioCtx;
-      }
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume(); // resume synchronously
-      }
+    const startTime = Date.now();
 
-      // Re-use or obtain the stream from our preloaded stream.
-      // If the preloaded stream was denied or stopped, request a new one.
-      let stream = preloadedStreamRef.current;
-      const isStreamActive = stream && stream.getTracks().some(track => track.readyState === 'live');
+    const simulateBlow = () => {
+      if (phaseRef.current !== 'mic_active') return;
 
-      if (!isStreamActive) {
-        const constraints = {
-          audio: {
-            echoCancellation: false,
-            noiseSuppression: false,
-            autoGainControl: false
-          }
-        };
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-        preloadedStreamRef.current = stream;
-      }
-      streamRef.current = stream;
-
-      // Force resume again after async operation
-      if (audioCtx.state === 'suspended') {
-        await audioCtx.resume();
-      }
-
-      const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 512;
-
-      const source = audioCtx.createMediaStreamSource(stream);
-      source.connect(analyser);
-
-      phaseRef.current = 'mic_active'; // Sincronización inmediata para evitar condiciones de carrera en checkVolume
-      setPhase('mic_active');
-      consecutiveBlowsRef.current = 0;
-
-      // Start Speech Recognition as a secondary trigger for voice commands
-      const SpeechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognitionClass) {
-        const recognition = new SpeechRecognitionClass();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = 'es-ES';
-        
-        recognition.onresult = (event) => {
-          if (phaseRef.current !== 'mic_active') return;
-          
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            const transcript = event.results[i][0].transcript.toLowerCase();
-            console.log("Speech recognized:", transcript);
-            
-            if (
-              transcript.includes('soplar') || 
-              transcript.includes('sopla') || 
-              transcript.includes('apagar') || 
-              transcript.includes('velas') || 
-              transcript.includes('vela') ||
-              transcript.includes('soplido') ||
-              transcript.includes('soplo') ||
-              transcript.includes('fuuu') ||
-              transcript.includes('fú') ||
-              transcript.includes('shh') ||
-              transcript.includes('shsh') ||
-              transcript.includes('ssss')
-            ) {
-              triggerExtinguishCandles();
-              break;
-            }
-          }
-        };
-
-        recognition.onerror = (e) => {
-          console.warn("Speech recognition error:", e.error);
-        };
-
-        try {
-          recognition.start();
-          recognitionRef.current = recognition;
-        } catch (e) {
-          console.error("Speech recognition start failed:", e);
-        }
-      }
-
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      const startTime = Date.now();
+      const elapsed = Date.now() - startTime;
       
-      const checkVolume = () => {
-        if (phaseRef.current !== 'mic_active') return;
-
-        // Use getByteFrequencyData instead of TimeDomain for highly stable frequency analysis
-        analyser.getByteFrequencyData(dataArray);
-
-        // 1. Calculate low-frequency rumble blowing average (bins 0 to 4 cover 0-430Hz)
-        let blowSum = 0;
-        const blowBinsLimit = Math.min(5, dataArray.length);
-        for (let i = 0; i < blowBinsLimit; i++) {
-          blowSum += dataArray[i];
-        }
-        const blowVol = (blowSum / blowBinsLimit) / 255.0;
-
-        // 2. Calculate breath sound ("fuuuuu" mid-low hiss, bins 4 to 30)
-        let breathSum = 0;
-        const breathBinsStart = 4;
-        const breathBinsEnd = Math.min(30, dataArray.length);
-        for (let i = breathBinsStart; i < breathBinsEnd; i++) {
-          breathSum += dataArray[i];
-        }
-        const breathVol = (breathSum / (breathBinsEnd - breathBinsStart)) / 255.0;
-
-        // 3. Calculate hissing sound ("shshshshshhs" high frequency hiss, bins 15 to 90)
-        let hissSum = 0;
-        const hissBinsStart = 15;
-        const hissBinsEnd = Math.min(90, dataArray.length);
-        for (let i = hissBinsStart; i < hissBinsEnd; i++) {
-          hissSum += dataArray[i];
-        }
-        const hissVol = (hissSum / (hissBinsEnd - hissBinsStart)) / 255.0;
-
-        // 4. Calculate peak amplitude (maximum volume of any single frequency bin)
-        let maxBinVal = 0;
-        for (let i = 0; i < dataArray.length; i++) {
-          if (dataArray[i] > maxBinVal) {
-            maxBinVal = dataArray[i];
-          }
-        }
-        const peakVol = maxBinVal / 255.0;
-
-        // 5. Calculate general average volume (average of all bins)
-        let total = 0;
-        for (let i = 0; i < dataArray.length; i++) {
-          total += dataArray[i];
-        }
-        const generalVol = (total / dataArray.length) / 255.0;
-
-        // Show the maximum volume from any of the relevant components on the visual bar
-        const currentFeedbackVol = Math.max(blowVol, breathVol, hissVol, generalVol);
-        setMicVolume(currentFeedbackVol);
-
-        // Check if cooldown of 600ms is active (ignores tap/click noise from Comenzar button)
-        const isCooldownActive = (Date.now() - startTime) < 600;
-
-        // Detect if user is currently blowing
-        const isBlowing = (
-          blowVol > 0.15 ||
-          breathVol > 0.15 ||
-          hissVol > 0.12 ||
-          peakVol > 0.45 ||
-          generalVol > 0.22
-        );
-
-        if (!isCooldownActive && isBlowing) {
-          // Accumulate progress: increment by 0.33 per frame -> ~5.0 seconds of continuous blow at 60fps
-          blowProgressRef.current = Math.min(100, blowProgressRef.current + 0.33);
-        } else {
-          // Slowly decay the progress if they stop blowing
-          blowProgressRef.current = Math.max(0, blowProgressRef.current - 0.25);
-        }
-
+      // Cooldown of 600ms to allow transition to start smoothly
+      if (elapsed > 600) {
+        // Increment progress: takes ~5 seconds (300 frames at 60fps)
+        // Add random fluctuation to look organic
+        const increment = 0.22 + Math.random() * 0.22;
+        blowProgressRef.current = Math.min(100, blowProgressRef.current + increment);
         setBlowProgress(blowProgressRef.current);
 
-        // Trigger candle extinguish only when the progress reaches 100%
-        if (blowProgressRef.current >= 100) {
-          triggerExtinguishCandles();
-          return;
-        }
+        // Also simulate a little bit of sound input for the 3D flames scaling effect
+        // Set volume to wobble between 0.15 and 0.45 during soplado
+        const simulatedVol = 0.15 + Math.random() * 0.30;
+        setMicVolume(simulatedVol);
+      } else {
+        setMicVolume(0);
+      }
 
-        requestAnimationFrame(checkVolume);
-      };
+      if (blowProgressRef.current >= 100) {
+        triggerExtinguishCandles();
+        return;
+      }
 
-      requestAnimationFrame(checkVolume);
+      requestAnimationFrame(simulateBlow);
+    };
 
-    } catch (err) {
-      console.error('Error accessing microphone:', err);
-      alert("No se pudo acceder al micrófono. No te preocupes, puedes simular el soplido tocando el botón alternativo.");
-      setPhase('mic_active');
-    }
+    requestAnimationFrame(simulateBlow);
   };
 
   const triggerExtinguishCandles = () => {
@@ -441,8 +252,6 @@ export default function App() {
     setContadorToques(0);
     setIndicadorMensaje("Toca la pantalla mi amor ❤️");
     setPhase('welcome');
-    // Preload the microphone stream again so it's ready for the next candle blow
-    preloadMicrophoneStream();
   };
 
   // ==========================================
@@ -620,13 +429,7 @@ export default function App() {
         
         {/* TOP LAYER: Mic volume feedback or close button */}
         <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
-          {phase === 'mic_active' && (
-            <div className="mic-indicator-container">
-              <Mic size={14} className="mic-circle" style={{ color: '#ff5e84' }} />
-              <span className="mic-text">Micrófono Activo</span>
-              <div className="mic-circle-pulse" />
-            </div>
-          )}
+          {/* Microphone indicator removed for simulated soplido */}
         </div>
 
         {/* MIDDLE / CENTER LAYER: Screen overlays */}
@@ -676,8 +479,8 @@ export default function App() {
         {phase === 'mic_active' && (
           <div className="blow-instructions">
             <div className="blow-bubble">
-              <Volume2 size={16} style={{ color: '#4d94ff' }} />
-              <span>¡Sopla fuerte hacia el micrófono ahora!</span>
+              <Sparkles size={16} style={{ color: '#f5c665' }} />
+              <span>¡Sopla hacia la pantalla para apagar las velas! 💨</span>
             </div>
             
             <div className="blow-bar-container">
@@ -702,7 +505,7 @@ export default function App() {
               }}
               onClick={triggerExtinguishCandles}
             >
-              Bypass: Soplar con un Click
+              Apagar velas al instante
             </button>
           </div>
         )}
