@@ -22,6 +22,7 @@ export default function App() {
   const [indicadorMensaje, setIndicadorMensaje] = useState("Toca la pantalla mi amor ❤️");
   const [isPlaying, setIsPlaying] = useState(false);
   const [showGiftModal, setShowGiftModal] = useState(false);
+  const [isOpeningGift, setIsOpeningGift] = useState(false);
 
   const canvasRef = useRef(null);
   const audioContextRef = useRef(null);
@@ -255,6 +256,26 @@ export default function App() {
     setIndicadorMensaje("Toca la pantalla mi amor ❤️");
     setPhase('welcome');
     setShowGiftModal(false);
+  };
+
+  const handleOpenGift = (e) => {
+    e.stopPropagation();
+    if (isOpeningGift || showGiftModal) return;
+    setIsOpeningGift(true);
+
+    // Explosión de confeti dorado y rosa al abrir la caja de regalo
+    confetti({
+      particleCount: 60,
+      spread: 70,
+      origin: { y: 0.75 },
+      colors: ['#f5c665', '#ff5e84', '#ffffff']
+    });
+
+    // Pequeño retardo de 600ms para permitir que la animación CSS de apertura se reproduzca
+    setTimeout(() => {
+      setShowGiftModal(true);
+      setIsOpeningGift(false);
+    }, 600);
   };
 
   // ==========================================
@@ -582,15 +603,9 @@ export default function App() {
                   🎁 Tu regalo te espera 🎁
                 </span>
                 <button 
-                  className="gift-box-btn interactive-element"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowGiftModal(true);
-                  }}
-                  onTouchStart={(e) => {
-                    e.stopPropagation();
-                    setShowGiftModal(true);
-                  }}
+                  className={`gift-box-btn interactive-element ${isOpeningGift ? 'opening' : ''}`}
+                  onClick={handleOpenGift}
+                  onTouchStart={handleOpenGift}
                 >
                   🎁
                 </button>
@@ -631,23 +646,23 @@ export default function App() {
       {/* GIFT DETAIL MODAL */}
       {showGiftModal && (
         <div className="photo-detail-modal">
-          <div className="photo-detail-content" style={{ maxWidth: '420px', gap: '1rem' }}>
-            <h2 className="welcome-title" style={{ fontSize: '1.5rem', margin: '0.5rem 0 0 0', color: '#f5c665' }}>
-              🎁 ¡Sorpresa! 🎁
-            </h2>
-            <img 
-              src={regaloImg} 
-              alt="Tu regalo" 
-              style={{ 
-                width: '100%', 
-                maxHeight: '55vh',
-                borderRadius: '12px', 
-                border: '3px solid #f5c665', 
-                aspectRatio: 'auto',
-                objectFit: 'contain',
-                boxShadow: '0 5px 25px rgba(245, 198, 101, 0.4)'
-              }}
-            />
+          <div className="photo-detail-content" style={{ maxWidth: '420px', gap: '1.2rem', padding: '1.8rem 1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+              <img 
+                src={regaloImg} 
+                alt="Tu regalo" 
+                style={{ 
+                  width: '65%', 
+                  maxWidth: '240px',
+                  height: 'auto',
+                  borderRadius: '12px', 
+                  border: '3px solid #f5c665', 
+                  aspectRatio: 'auto',
+                  objectFit: 'contain',
+                  boxShadow: '0 5px 25px rgba(245, 198, 101, 0.35)'
+                }}
+              />
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', width: '100%', marginTop: '0.5rem' }}>
               <button 
                 className="btn-premium interactive-element" 
