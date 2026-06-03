@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import ThreeCanvas from './components/ThreeCanvas';
 import confetti from 'canvas-confetti';
 import { Mic, X, Heart, Sparkles, Volume2, VolumeX } from 'lucide-react';
-import regaloImg from './assets/regalo.png';
+import regaloImg from './assets/regalo.jpeg';
 
 const LYRICS = [
   "Cumpleaños feliz,",
