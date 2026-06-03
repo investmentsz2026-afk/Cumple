@@ -20,6 +20,7 @@ export default function App() {
   const [contadorToques, setContadorToques] = useState(0);
   const [indicadorMensaje, setIndicadorMensaje] = useState("Toca la pantalla mi amor ❤️");
   const [isPlaying, setIsPlaying] = useState(false);
+  const [showGiftModal, setShowGiftModal] = useState(false);
 
   const canvasRef = useRef(null);
   const audioContextRef = useRef(null);
@@ -252,6 +253,7 @@ export default function App() {
     setContadorToques(0);
     setIndicadorMensaje("Toca la pantalla mi amor ❤️");
     setPhase('welcome');
+    setShowGiftModal(false);
   };
 
   // ==========================================
@@ -570,8 +572,37 @@ export default function App() {
                 Gracias por compartir tantos momentos conmigo ❤️
               </h1>
               <p className="final-subtext">
-                He creado este pequeño universo para celebrar tu día. Las fotos que orbitan Saturno representan los hermosos momentos que hemos vivido juntos.
+                He creado este pequeño universo para celebrar tu día. Las fotos que orbitan Saturno representan los hermosos momentos que hemos vivido juntos. Gracias
               </p>
+
+              {/* Gift box section with tooltip text */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', margin: '0.8rem 0' }}>
+                <span style={{ fontSize: '0.85rem', color: '#f5c665', fontWeight: 'bold', letterSpacing: '0.05em' }}>
+                  🎁 Tu regalo te espera 🎁
+                </span>
+                <button 
+                  className="gift-box-btn interactive-element"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowGiftModal(true);
+                  }}
+                  onTouchStart={(e) => {
+                    e.stopPropagation();
+                    setShowGiftModal(true);
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '2.5rem',
+                    padding: '0.2rem',
+                    outline: 'none'
+                  }}
+                >
+                  🎁
+                </button>
+              </div>
+
               <button 
                 className="btn-premium" 
                 style={{ fontSize: '0.8rem', padding: '0.7rem 1.8rem' }}
@@ -600,6 +631,52 @@ export default function App() {
               className="photo-detail-image"
             />
             <h3 className="photo-detail-caption">{activePhoto.title}</h3>
+          </div>
+        </div>
+      )}
+
+      {/* GIFT DETAIL MODAL */}
+      {showGiftModal && (
+        <div className="photo-detail-modal">
+          <div className="photo-detail-content" style={{ maxWidth: '420px', gap: '1rem' }}>
+            <h2 className="welcome-title" style={{ fontSize: '1.5rem', margin: '0.5rem 0 0 0', color: '#f5c665' }}>
+              🎁 ¡Sorpresa! 🎁
+            </h2>
+            <img 
+              src="/regalo.png" 
+              alt="Tu regalo" 
+              className="photo-detail-image"
+              style={{ width: '100%', borderRadius: '12px', border: '3px solid #f5c665', aspectRatio: 'auto' }}
+            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', width: '100%', marginTop: '0.5rem' }}>
+              <button 
+                className="btn-premium interactive-element" 
+                style={{ fontSize: '0.85rem', padding: '0.7rem' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowGiftModal(false);
+                }}
+              >
+                Cerrar regalo
+              </button>
+              <button 
+                className="btn-premium interactive-element" 
+                style={{ 
+                  fontSize: '0.8rem', 
+                  padding: '0.6rem',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  boxShadow: 'none'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowGiftModal(false);
+                  handleResetExperience();
+                }}
+              >
+                Volver a empezar
+              </button>
+            </div>
           </div>
         </div>
       )}
