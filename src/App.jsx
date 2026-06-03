@@ -570,7 +570,7 @@ export default function App() {
                 Gracias por compartir tantos momentos conmigo ❤️
               </h1>
               <p className="final-subtext">
-                He creado este pequeño universo para celebrar tu día. Las fotos que orbitan Saturno representan los hermosos momentos que hemos vivido juntos.
+                He creado este pequeño universo para celebrar tu día. Las fotos que orbitan Saturno representan los hermosos momentos que hemos vivido juntos. Gracias
               </p>
               <button 
                 className="btn-premium" 
