@@ -37,6 +37,8 @@ export class ThreeSceneManager {
     this.constellationStars = null;
     this.nebulaMeshes = [];
     this.distantPlanets = [];
+    this.cakeNumberMaterial = null;
+    this.cakeNumberLight = null;
 
     // Saturn specific details from 'saturno' folder (Restoring the circular text ring)
     this.textRingGroup = null;
@@ -65,6 +67,7 @@ export class ThreeSceneManager {
       '/gentilis_regular.typeface.json',
       (loadedFont) => {
         this.font = loadedFont;
+        this.buildCakeNumber26();
         if (this.saturnMesh) {
           this.rebuildTextRing();
         }
@@ -754,7 +757,69 @@ export class ThreeSceneManager {
     this.cakeGroup.position.y = -6;
     this.cakeGroup.scale.set(0.01, 0.01, 0.01);
   }
+  buildCakeNumber26() {
+    if (!this.font || !this.cakeGroup) return;
 
+    // Crear grupo para el adorno (topper)
+    const topperGroup = new THREE.Group();
+
+    // Material dorado metálico con alto brillo y emisivo LED dinámico
+    const goldMat = new THREE.MeshStandardMaterial({
+      color: 0xf5c665, // color de oro cálido base
+      metalness: 0.95,  // altamente metálico
+      roughness: 0.12, // muy pulido para alto brillo
+      emissive: new THREE.Color(0xff1493), // Emisivo inicial LED rosa
+      emissiveIntensity: 1.0,
+      bumpScale: 0.05
+    });
+
+    this.cakeNumberMaterial = goldMat;
+
+    // Geometría 3D del número '26'
+    const textGeom = new TextGeometry('26', {
+      font: this.font,
+      size: 0.55,           // Altura del texto
+      depth: 0.12,          // Extrusión 3D (grosor)
+      curveSegments: 12,
+      bevelEnabled: true,
+      bevelThickness: 0.03,
+      bevelSize: 0.015,
+      bevelSegments: 4
+    });
+
+    // Centrar la geometría con respecto a su punto de pivote
+    textGeom.computeBoundingBox();
+    textGeom.center();
+
+    // Crear la malla 3D de los números
+    const textMesh = new THREE.Mesh(textGeom, goldMat);
+    textMesh.castShadow = true;
+    textMesh.receiveShadow = true;
+    textMesh.position.set(0, 0.32, 0); // posicionar ligeramente encima de la varilla
+    topperGroup.add(textMesh);
+
+    // Crear varilla dorada de soporte (para insertar en la torta)
+    const standGeom = new THREE.CylinderGeometry(0.018, 0.018, 0.38, 8);
+    const standMesh = new THREE.Mesh(standGeom, goldMat);
+    standMesh.castShadow = true;
+    standMesh.position.set(0, 0.05, 0);
+    topperGroup.add(standMesh);
+
+    // Luz de punto LED localizada en los números
+    const cakeNumberLight = new THREE.PointLight(0xff1493, 1.5, 4.0, 1.5);
+    cakeNumberLight.position.set(0, 0.32, 0.12);
+    topperGroup.add(cakeNumberLight);
+    this.cakeNumberLight = cakeNumberLight;
+
+    // Posicionar el grupo del topper sobre la torta
+    topperGroup.position.set(0, 2.15, 0);
+
+    // Orientar de frente a la cámara inicial
+    topperGroup.rotation.y = 0;
+
+    // Agregar al grupo de la torta
+    this.cakeGroup.add(topperGroup);
+  }
   createGlowPlanetTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 1024;
@@ -1655,6 +1720,38 @@ export class ThreeSceneManager {
 
     const deltaTime = this.clock.getDelta();
     const elapsedTime = this.clock.getElapsedTime();
+
+    // Animación LED RGB para el número '26' (transición de Rosa, Dorado, Lila)
+    if (this.cakeNumberMaterial) {
+      const ledColors = [
+        new THREE.Color(0xff1493), // Rosa
+        new THREE.Color(0xffbb00), // Dorado
+        new THREE.Color(0xa844ff)  // Lila/Lavender
+      ];
+
+      const cycleDuration = 1.6; // Segundos de duración por color
+      const index = Math.floor(elapsedTime / cycleDuration) % ledColors.length;
+      const nextIndex = (index + 1) % ledColors.length;
+      const t = (elapsedTime % cycleDuration) / cycleDuration;
+      
+      // Interpolación cosenoidal para una transición suave
+      const smoothT = Math.sin((t - 0.5) * Math.PI) * 0.5 + 0.5;
+      
+      // Interpolar color del material emissive
+      this.cakeNumberMaterial.emissive.copy(ledColors[index]).lerp(ledColors[nextIndex], smoothT);
+      
+      // Efecto de pulso/respiración LED
+      const pulseIntensity = 0.8 + Math.sin(elapsedTime * 4.5) * 0.35;
+      this.cakeNumberMaterial.emissiveIntensity = pulseIntensity;
+
+      // Sincronizar la luz física proyectada con el color e intensidad del LED
+      if (this.cakeNumberLight) {
+        this.cakeNumberLight.color.copy(this.cakeNumberMaterial.emissive);
+        // Atenuar la luz de forma proporcional a la escala de la torta
+        const scaleFactor = this.cakeGroup.scale.x / 0.65;
+        this.cakeNumberLight.intensity = pulseIntensity * 1.8 * scaleFactor;
+      }
+    }
 
     // 1. Gentle Welcome/Lyrics Camera pan
     if (this.phase === 'welcome' || this.phase === 'lyrics' || this.phase === 'wish' || this.phase === 'mic_active') {
