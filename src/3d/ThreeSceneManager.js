@@ -780,11 +780,11 @@ export class ThreeSceneManager {
       font: this.font,
       size: 0.55,           // Altura del texto
       depth: 0.12,          // Extrusión 3D (grosor)
-      curveSegments: 12,
+      curveSegments: 4,     // Reducido de 12 a 4 para disminuir polígonos en un 70%
       bevelEnabled: true,
-      bevelThickness: 0.03,
-      bevelSize: 0.015,
-      bevelSegments: 4
+      bevelThickness: 0.025,
+      bevelSize: 0.01,
+      bevelSegments: 1      // Reducido de 4 a 1 para disminuir subdivisiones drásticamente
     });
 
     // Centrar la geometría con respecto a su punto de pivote
@@ -996,44 +996,8 @@ export class ThreeSceneManager {
     const pasoAngulo = (Math.PI * 2) / totalLetras;
 
     if (this.font) {
-      for (let i = 0; i < totalLetras; i++) {
-        const letra = textoAnillo[i];
-        if (letra === ' ') continue;
-
-        const geom = new TextGeometry(letra, {
-          font: this.font,
-          size: 0.36,
-          depth: 0.005, // FLAT, "sin altura" (extremely thin extrusion)
-          curveSegments: 4,
-          bevelEnabled: false
-        });
-        geom.center();
-
-        const mat = new THREE.MeshPhongMaterial({
-          color: 0xffccff,
-          emissive: 0x550044,
-          specular: 0xffaaff,
-          shininess: 100,
-          transparent: true,
-          opacity: 0.95,
-          depthWrite: false,
-          depthTest: true,
-          fog: false
-        });
-
-        const mesh = new THREE.Mesh(geom, mat);
-        const angulo = -i * pasoAngulo;
-        mesh.position.set(Math.cos(angulo) * radio, 0, Math.sin(angulo) * radio);
-
-        // Position it flat on the ring plane, tangent to the circle
-        mesh.rotation.x = -Math.PI / 2;
-        mesh.rotation.y = 0;
-        mesh.rotation.z = angulo - Math.PI / 2;
-        mesh.renderOrder = 4; // Higher renderOrder for transparent pass sorting
-
-        this.textRingGroup.add(mesh);
-        this.objetosTextoAnillo.push(mesh);
-      }
+      // Iniciar construcción progresiva de 4 letras por fotograma para mantener los FPS altos en móviles
+      this.buildTextRingProgressively(0, radio, textoAnillo, totalLetras, pasoAngulo);
     } else {
       for (let i = 0; i < totalLetras * 1.5; i++) {
         const geom = new THREE.SphereGeometry(0.08, 8, 8);
@@ -1054,6 +1018,59 @@ export class ThreeSceneManager {
         this.textRingGroup.add(mesh);
         this.objetosTextoAnillo.push(mesh);
       }
+    }
+  }
+
+  buildTextRingProgressively(index, radio, textoAnillo, totalLetras, pasoAngulo) {
+    if (!this.font || !this.textRingGroup) return;
+
+    // Procesar en tandas pequeñas de 4 letras por frame para mantener 60fps
+    const batchSize = 4;
+    const end = Math.min(index + batchSize, totalLetras);
+
+    for (let i = index; i < end; i++) {
+      const letra = textoAnillo[i];
+      if (letra === ' ') continue;
+
+      const geom = new TextGeometry(letra, {
+        font: this.font,
+        size: 0.36,
+        depth: 0.005, // Plano sin altura
+        curveSegments: 2, // Optimizado de 4 a 2 para reducir polígonos
+        bevelEnabled: false
+      });
+      geom.center();
+
+      const mat = new THREE.MeshPhongMaterial({
+        color: 0xffccff,
+        emissive: 0x550044,
+        specular: 0xffaaff,
+        shininess: 100,
+        transparent: true,
+        opacity: 0.95,
+        depthWrite: false,
+        depthTest: true,
+        fog: false
+      });
+
+      const mesh = new THREE.Mesh(geom, mat);
+      const angulo = -i * pasoAngulo;
+      mesh.position.set(Math.cos(angulo) * radio, 0, Math.sin(angulo) * radio);
+
+      // Posicionar plano en el anillo
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.rotation.y = 0;
+      mesh.rotation.z = angulo - Math.PI / 2;
+      mesh.renderOrder = 4;
+
+      this.textRingGroup.add(mesh);
+      this.objetosTextoAnillo.push(mesh);
+    }
+
+    if (end < totalLetras) {
+      requestAnimationFrame(() => {
+        this.buildTextRingProgressively(end, radio, textoAnillo, totalLetras, pasoAngulo);
+      });
     }
   }
 
