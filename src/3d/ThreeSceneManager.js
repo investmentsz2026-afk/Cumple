@@ -3,6 +3,7 @@ import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import gsap from 'gsap';
+import gentilisFontJson from '../assets/gentilis_regular.typeface.json';
 
 export class ThreeSceneManager {
   constructor(container, callbacks = {}) {
@@ -60,21 +61,14 @@ export class ThreeSceneManager {
     // Auto-generated 16 polaroid orbits populated dynamically
     this.photoOrbits = [];
 
-    // Async Font Loading for circular text ring (loaded from local folder)
+    // Cargar y parsear la fuente de forma sincrónica para evitar fallos de red o de carga asíncrona
     this.font = null;
     this.fontLoader = new FontLoader();
-    this.fontLoader.load(
-      '/gentilis_regular.typeface.json',
-      (loadedFont) => {
-        this.font = loadedFont;
-        this.buildCakeNumber26();
-        if (this.saturnMesh) {
-          this.rebuildTextRing();
-        }
-      },
-      undefined,
-      (err) => console.warn('Failed to load gentilis typeface font, using sphere fallbacks:', err)
-    );
+    try {
+      this.font = this.fontLoader.parse(gentilisFontJson);
+    } catch (e) {
+      console.warn('Failed to parse gentilis typeface font, using sphere fallbacks:', e);
+    }
 
     // Bindings
     this.onResize = this.onResize.bind(this);
@@ -756,6 +750,9 @@ export class ThreeSceneManager {
 
     this.cakeGroup.position.y = -6;
     this.cakeGroup.scale.set(0.01, 0.01, 0.01);
+
+    // Construir el topper del número 26 dorado sobre la torta de forma sincrónica
+    this.buildCakeNumber26();
   }
   buildCakeNumber26() {
     if (!this.font || !this.cakeGroup) return;
